@@ -54,11 +54,13 @@ list(APPEND RAW_SOURCES
   core_ocean/shared/mpas_ocn_vel_forcing_explicit_bottom_drag.F
   core_ocean/shared/mpas_ocn_vel_pressure_grad.F
   core_ocean/shared/mpas_ocn_vel_forcing_topographic_wave_drag.F
+  core_ocean/shared/mpas_ocn_vmix_adc.F
+  core_ocean/shared/mpas_ocn_tendency.F
   core_ocean/shared/mpas_ocn_vmix.F
   core_ocean/shared/mpas_ocn_vmix_coefs_redi.F
   core_ocean/shared/mpas_ocn_vmix_cvmix.F
   core_ocean/shared/mpas_ocn_vmix_gotm.F
-  core_ocean/shared/mpas_ocn_tendency.F
+  core_ocean/shared/mpas_ocn_turbulence.F
   core_ocean/shared/mpas_ocn_tracer_hmix.F
   core_ocean/shared/mpas_ocn_tracer_hmix_del2.F
   core_ocean/shared/mpas_ocn_tracer_hmix_del4.F

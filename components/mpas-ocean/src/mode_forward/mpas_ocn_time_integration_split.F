@@ -141,7 +141,9 @@ module ocn_time_integration_split
          forcingPool,       &! structure holding forcing variables
          scratchPool,       &! structure holding temporary variables
          swForcingPool,     &! structure holding short-wave forcing vars
-         tracersIdealAgeFieldsPool     ! structure holding idealAge-related fields
+         tracersIdealAgeFieldsPool,    &! structure holding idealAge-related fields
+         mixedLayerDepthsAMPool,       &!
+         diagnosticsPool     !
 
       logical :: &
          activeTracersOnly   ! only compute tendencies for active tracers
@@ -248,6 +250,8 @@ module ocn_time_integration_split
       ! Forcing pool
       real (kind=RKIND), dimension(:), pointer :: tidalPotentialEta
 
+      real (kind=RKIND), dimension(:), pointer :: dThreshMLD
+
       ! These are public variables used from the diagnostics module
       ! indexSurfaceVelocityZonal, indexSurfaceVelocityMeridional
       ! indexSSHGradientZonal, indexSSHGradientMeridional
@@ -301,6 +305,11 @@ module ocn_time_integration_split
                                              tracersPool)
       call mpas_pool_get_subpool(tendPool,  'tracersTend', &
                                              tracersTendPool)
+      call mpas_pool_get_subpool(block%structs, 'mixedLayerDepthsAM', &
+                                                 mixedLayerDepthsAMPool)
+      call mpas_pool_get_subpool(block % structs, 'diagnostics', &
+                                                   diagnosticsPool)
+      call mpas_pool_get_array(mixedLayerDepthsAMPool, 'dThreshMLD', dThreshMLD)
 
       !*** Retrieve state variables at two time levels
 
@@ -1899,8 +1908,8 @@ module ocn_time_integration_split
       !   call ocn_gm_compute_Bolus_velocity(statePool, &
       !             meshPool, scratchPool, timeLevelIn=2)
       !end if
-      call ocn_vmix_implicit(dt, meshPool, statePool, forcingPool, &
-                             scratchPool, err, 2)
+      call ocn_vmix_implicit(dt, meshPool, diagnosticsPool, statePool, &
+                             forcingPool, scratchPool, dThreshMLD, err, 2)
 
       ! Update halo on u and tracers, which were just updated for
       ! implicit vertical mixing.  If not done, this leads to lack of

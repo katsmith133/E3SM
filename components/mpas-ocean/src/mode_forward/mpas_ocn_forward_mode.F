@@ -74,6 +74,8 @@ module ocn_forward_mode
    use ocn_tracer_CFC
    use ocn_tracer_surface_restoring
    use ocn_gm
+   use ocn_turbulence
+   use ocn_vmix_adc
 
    use ocn_high_freq_thickness_hmix_del2
 
@@ -697,6 +699,10 @@ module ocn_forward_mode
          call mpas_log_write( '   Performing I/O')
 #endif
          call mpas_timer_start('io_write')
+         if ( mpas_stream_mgr_ringing_alarms(domain % streamManager, streamID='adcTurbulenceOutput', &
+             direction=MPAS_STREAM_OUTPUT, ierr=ierr) ) THEN
+             call ocn_turbulenceUpdateFields(domain)
+         end if
          call mpas_stream_mgr_write(domain % streamManager, streamID='output', ierr=ierr)
          call mpas_timer_stop('io_write')
          call mpas_timer_start('reset_io_alarms')
@@ -808,6 +814,9 @@ module ocn_forward_mode
       call ocn_analysis_finalize(domain, ierr)
 
       call ocn_vmix_gotm_finalize(domain, ierr)
+
+      if(config_adc_enable) call ocn_vmix_adc_finalize(ierr)
+      if(config_adc_enable) call ocn_turbulenceDestroy(ierr)
 
       call mpas_destroy_clock(domain % clock, ierr)
 

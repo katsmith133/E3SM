@@ -103,6 +103,8 @@ module ocn_time_integration_rk4
       type (mpas_pool_type), pointer :: forcingPool
       type (mpas_pool_type), pointer :: scratchPool
       type (mpas_pool_type), pointer :: swForcingPool
+      type (mpas_pool_type), pointer :: mixedLayerDepthsAMPool
+      type (mpas_pool_type), pointer :: diagnosticsPool
 
       integer :: rk_step
 
@@ -184,6 +186,8 @@ module ocn_time_integration_rk4
       real (kind=RKIND), dimension(:,:), pointer :: restingThickness
       real (kind=RKIND) :: totalDepth
 
+      real (kind=RKIND), dimension(:), pointer :: dThreshMLD
+
       ! Get config options
       call mpas_pool_get_config(domain % configs, 'config_mom_del4', config_mom_del4)
       call mpas_pool_get_config(domain % configs, 'config_filter_btr_mode', config_filter_btr_mode)
@@ -215,6 +219,10 @@ module ocn_time_integration_rk4
          call mpas_pool_get_subpool(block % structs, 'state', statePool)
          call mpas_pool_get_subpool(statePool, 'tracers', tracersPool)
          call mpas_pool_get_subpool(block % structs, 'mesh', meshPool)
+         call mpas_pool_get_subpool(block % structs, 'mixedLayerDepthsAM', &
+                                                      mixedLayerDepthsAMPool)
+         call mpas_pool_get_subpool(block % structs, 'diagnostics', &
+                                                      diagnosticsPool)
 
          call mpas_pool_create_pool(provisStatePool)
 
@@ -236,6 +244,8 @@ module ocn_time_integration_rk4
 
          call mpas_pool_get_array(meshPool, 'maxLevelCell', maxLevelCell)
          call mpas_pool_get_array(meshPool, 'maxLevelEdgeTop', maxLevelEdgeTop)
+
+         call mpas_pool_get_array(mixedLayerDepthsAMPool, 'dThreshMLD', dThreshMLD)
 
          ! Lower k-loop limit of 1 rather than minLevel* needed in *New = *Cur
          ! assignments below are needed to maintain bit-for-bit results
@@ -1343,6 +1353,8 @@ module ocn_time_integration_rk4
       type (mpas_pool_type), pointer :: statePool, meshPool, forcingPool
       type (mpas_pool_type), pointer :: scratchPool
       type (mpas_pool_type), pointer :: tracersPool
+      type (mpas_pool_type), pointer :: mixedLayerDepthsAMPool
+      type (mpas_pool_type), pointer :: diagnosticsPool
 
       real (kind=RKIND), dimension(:, :), pointer :: layerThicknessNew, normalVelocityNew
       real (kind=RKIND), dimension(:, :, :), pointer :: tracersGroupNew
@@ -1356,6 +1368,8 @@ module ocn_time_integration_rk4
 
       logical, pointer :: config_use_GM
 
+      real (kind=RKIND), dimension(:), pointer :: dThreshMLD
+
       err = 0
 
       call mpas_pool_get_config(block % configs, 'config_use_GM', config_use_GM)
@@ -1367,6 +1381,10 @@ module ocn_time_integration_rk4
       call mpas_pool_get_subpool(block % structs, 'mesh', meshPool)
       call mpas_pool_get_subpool(block % structs, 'forcing', forcingPool)
       call mpas_pool_get_subpool(block % structs, 'scratch', scratchPool)
+      call mpas_pool_get_subpool(block % structs, 'mixedLayerDepthsAM', &
+                                                   mixedLayerDepthsAMPool)
+      call mpas_pool_get_subpool(block % structs, 'diagnostics', &
+                                                   diagnosticsPool)
 
       call mpas_pool_get_subpool(statePool, 'tracers', tracersPool)
 
@@ -1378,6 +1396,8 @@ module ocn_time_integration_rk4
 
       call mpas_pool_get_array(meshPool, 'minLevelCell', minLevelCell)
       call mpas_pool_get_array(meshPool, 'maxLevelCell', maxLevelCell)
+
+      call mpas_pool_get_array(mixedLayerDepthsAMPool, 'dThreshMLD', dThreshMLD)
 
       call mpas_pool_begin_iteration(tracersPool)
       do while ( mpas_pool_get_next_member(tracersPool, groupItr) )
@@ -1399,7 +1419,8 @@ module ocn_time_integration_rk4
 
       call ocn_diagnostic_solve(dt, statePool, forcingPool, meshPool, scratchPool, tracersPool, 2)
 
-      call ocn_vmix_implicit(dt, meshPool, statePool, forcingPool, scratchPool, err, 2)
+      call ocn_vmix_implicit(dt, meshPool, diagnosticsPool, statePool, forcingPool, &
+                             scratchPool, dThreshMLD, err, 2)
 
    end subroutine ocn_time_integrator_rk4_cleanup!}}}
 

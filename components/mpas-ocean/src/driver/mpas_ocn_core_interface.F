@@ -133,6 +133,7 @@ module ocn_core_interface
       logical, pointer :: timeVaryingAtmosphericForcingPKGActive
       logical, pointer :: timeVaryingLandIceForcingPKGActive
       logical, pointer :: gotmPKGActive
+      logical, pointer :: adcMixingPKGActive
 
       type (mpas_pool_iterator_type) :: pkgItr
       logical, pointer :: packageActive
@@ -164,6 +165,7 @@ module ocn_core_interface
       logical, pointer :: config_use_time_varying_atmospheric_forcing
       logical, pointer :: config_use_time_varying_land_ice_forcing
       logical, pointer :: config_use_gotm
+      logical, pointer :: config_adc_enable
 
       character (len=StrKIND), pointer :: config_time_integrator
       character (len=StrKIND), pointer :: config_ocean_run_mode
@@ -374,6 +376,15 @@ module ocn_core_interface
       if (config_use_gotm) then
          gotmPKGActive = .true.
       end if
+
+      !
+      ! test for use of new assumed distribution closure
+      !
+      call mpas_pool_get_package(packagePool, 'adcMixingPKGActive', adcMixingPKGActive)
+      call mpas_pool_get_config(configPool, 'config_adc_enable', config_adc_enable)
+      if ( config_adc_enable ) then
+         adcMixingPKGActive = .true.
+      endif
 
       !
       ! call into analysis member driver to set analysis member packages

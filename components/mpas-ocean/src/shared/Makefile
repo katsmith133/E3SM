@@ -27,11 +27,14 @@ OBJS = mpas_ocn_init_routines.o \
 	   mpas_ocn_vel_forcing_surface_stress.o \
 	   mpas_ocn_vel_forcing_explicit_bottom_drag.o \
 	   mpas_ocn_vel_pressure_grad.o \
+	   mpas_ocn_vmix_adc.o \
+	   mpas_ocn_tendency.o \
+	   mpas_ocn_adcReconstruct.o \
 	   mpas_ocn_vmix.o \
 	   mpas_ocn_vmix_coefs_redi.o \
 	   mpas_ocn_vmix_cvmix.o \
 	   mpas_ocn_vmix_gotm.o \
-	   mpas_ocn_tendency.o \
+	   mpas_ocn_turbulence.o \
 	   mpas_ocn_tracer_hmix.o \
 	   mpas_ocn_tracer_hmix_del2.o \
 	   mpas_ocn_tracer_hmix_del4.o \
@@ -148,6 +151,12 @@ mpas_ocn_tracer_short_wave_absorption.o: mpas_ocn_tracer_short_wave_absorption_j
 mpas_ocn_tracer_short_wave_absorption_variable.o: mpas_ocn_constants.o mpas_ocn_config.o mpas_ocn_framework_forcing.o
 
 mpas_ocn_tracer_short_wave_absorption_jerlov.o: mpas_ocn_constants.o mpas_ocn_config.o
+
+mpas_ocn_turbulence.o: mpas_ocn_config.o
+
+mpas_ocn_adcReconstruct.o: mpas_ocn_constants.o mpas_ocn_turbulence.o
+
+mpas_ocn_vmix_adc.o: mpas_ocn_constants.o mpas_ocn_turbulence.o mpas_ocn_adcReconstruct.o mpas_ocn_surface_bulk_forcing.o
 
 mpas_ocn_vmix.o: mpas_ocn_vmix_cvmix.o mpas_ocn_vmix_coefs_redi.o mpas_ocn_constants.o mpas_ocn_config.o mpas_ocn_diagnostics_variables.o mpas_ocn_vmix_gotm.o
 

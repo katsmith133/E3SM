@@ -31,6 +31,7 @@ module ocn_vmix
    use ocn_config
    use ocn_vmix_cvmix
    use ocn_vmix_gotm
+   use ocn_vmix_adc
    use ocn_vmix_coefs_redi
    use ocn_diagnostics_variables
 
@@ -1040,14 +1041,17 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_vmix_implicit(dt, meshPool, statePool, forcingPool, scratchPool, err, timeLevelIn)!{{{
+   subroutine ocn_vmix_implicit(dt, meshPool, diagnosticsPool, statePool, &
+      forcingPool, scratchPool, dThreshMLD, err, timeLevelIn) !{{{
       real (kind=RKIND), intent(in) :: dt
       type (mpas_pool_type), intent(in) :: meshPool
       type (mpas_pool_type), intent(inout) :: statePool
       type (mpas_pool_type), intent(inout) :: forcingPool
       type (mpas_pool_type), intent(in) :: scratchPool !< Input/Output: Scratch structure
+      type (mpas_pool_type), intent(inout) :: diagnosticsPool
       integer, intent(out) :: err
       integer, intent(in), optional :: timeLevelIn
+      real (kind=RKIND), dimension(:), intent(in) :: dThreshMLD
 
       type (mpas_pool_type), pointer :: tracersPool, tracersSurfaceFluxPool
 
@@ -1100,126 +1104,130 @@ contains
       call ocn_vmix_coefs(meshPool, statePool, forcingPool, scratchPool, err, timeLevel)
       call mpas_timer_stop('vmix coefs')
 
-      nCells = nCellsArray(1)
-      ! if using CVMix, then viscosity has to be averaged from cell centers to cell edges
-      if ( config_use_cvmix ) then
-
-         nEdges = nEdgesArray( 1 )
-         call mpas_timer_start('CVMix avg', .false.)
-         !$omp parallel
-         !$omp do schedule(runtime) private(cell1, cell2, k)
-         do iEdge=1,nEdges
-            vertViscTopOfEdge(:, iEdge) = 0.0_RKIND
-            cell1 = cellsOnEdge(1,iEdge)
-            cell2 = cellsOnEdge(2,iEdge)
-            do k=minLevelEdgeBot(iEdge),maxLevelEdgeTop(iEdge)
-               vertViscTopOfEdge(k,iEdge) = 0.5_RKIND*(vertViscTopOfCell(k,cell2)+vertViscTopOfCell(k,cell1))
-            end do
-         end do
-         !$omp end do
-         !$omp end parallel
-         call mpas_timer_stop('CVMix avg')
-      endif
-
-      ! if using GOTM, then viscosity has to be averaged from cell centers to cell edges
-      if ( config_use_gotm ) then
-
-         nEdges = nEdgesArray( 1 )
-         call mpas_timer_start('GOTM avg', .false.)
-         !$omp do schedule(runtime) private(cell1, cell2, k)
-         do iEdge=1,nEdges
-            vertViscTopOfEdge(:, iEdge) = 0.0_RKIND
-            cell1 = cellsOnEdge(1,iEdge)
-            cell2 = cellsOnEdge(2,iEdge)
-            do k=minLevelEdgeBot(iEdge),maxLevelEdgeTop(iEdge)
-               vertViscTopOfEdge(k,iEdge) = 0.5_RKIND*(vertViscTopOfCell(k,cell2)+vertViscTopOfCell(k,cell1))
-            end do
-         end do
-         !$omp end do
-         call mpas_timer_stop('GOTM avg')
-      endif
-
-      !
-      !  Implicit vertical solve for momentum
-      !
-      call mpas_timer_start('vmix solve momentum', .false.)
-      if (config_use_implicit_bottom_drag_variable) then
-        call ocn_vel_vmix_tend_implicit_spatially_variable(meshPool, bottomDrag, dt, kineticEnergyCell, &
-          vertViscTopOfEdge, layerThickness, layerThickEdge, normalVelocity, err)
-      else if (config_use_implicit_bottom_drag_variable_mannings.or. &
-               config_use_implicit_bottom_roughness) then
-        ! update bottomDrag via Cd=g*n^2*h^(-1/3)
-        call ocn_vel_vmix_tend_implicit_spatially_variable_mannings(meshPool, forcingPool, bottomDrag, &
-          dt, kineticEnergyCell, &
-          vertViscTopOfEdge, layerThickness, layerThickEdge, normalVelocity, &
-          ssh, bottomDepth, err)
-      else if (config_Rayleigh_friction.or. &
-               config_Rayleigh_bottom_friction.or. &
-               config_Rayleigh_damping_depth_variable) then
-        call ocn_vel_vmix_tend_implicit_rayleigh(meshPool, dt, kineticEnergyCell, &
-          vertViscTopOfEdge, layerThickness, layerThickEdge, normalVelocity, err)
+      if (config_adc_enable) then
+         call ocn_vmix_adc_mix(meshPool, statePool, forcingPool, diagnosticsPool, dThreshMLD, &
+                dt, err, 2)
       else
-        call ocn_vel_vmix_tend_implicit(meshPool, dt, kineticEnergyCell, &
-          vertViscTopOfEdge, layerThickness, layerThickEdge, normalVelocity, err)
-      end if
-      call mpas_timer_stop('vmix solve momentum')
+         nCells = nCellsArray(1)
+         ! if using CVMix, then viscosity has to be averaged from cell centers to cell edges
+         if ( config_use_cvmix ) then
+            
+            nEdges = nEdgesArray( 1 )
+            call mpas_timer_start('CVMix avg', .false.)
+            !$omp parallel
+            !$omp do schedule(runtime) private(cell1, cell2, k)
+            do iEdge=1,nEdges
+               vertViscTopOfEdge(:, iEdge) = 0.0_RKIND
+               cell1 = cellsOnEdge(1,iEdge)
+               cell2 = cellsOnEdge(2,iEdge)
+               do k=minLevelEdgeBot(iEdge),maxLevelEdgeTop(iEdge)
+                  vertViscTopOfEdge(k,iEdge) = 0.5_RKIND*(vertViscTopOfCell(k,cell2)+vertViscTopOfCell(k,cell1))
+               end do
+            end do
+            !$omp end do
+            !$omp end parallel
+            call mpas_timer_stop('CVMix avg')
+         endif
 
-      !
-      !  Implicit vertical solve for all tracers
-      !
+         ! if using GOTM, then viscosity has to be averaged from cell centers to cell edges
+         if ( config_use_gotm ) then
 
-      call mpas_timer_start('vmix solve tracers', .false.)
-      call mpas_pool_begin_iteration(tracersPool)
-      do while ( mpas_pool_get_next_member(tracersPool, groupItr) )
+            nEdges = nEdgesArray( 1 )
+            call mpas_timer_start('GOTM avg', .false.)
+            !$omp do schedule(runtime) private(cell1, cell2, k)
+            do iEdge=1,nEdges
+               vertViscTopOfEdge(:, iEdge) = 0.0_RKIND
+               cell1 = cellsOnEdge(1,iEdge)
+               cell2 = cellsOnEdge(2,iEdge)
+               do k=minLevelEdgeBot(iEdge),maxLevelEdgeTop(iEdge)
+                  vertViscTopOfEdge(k,iEdge) = 0.5_RKIND*(vertViscTopOfCell(k,cell2)+vertViscTopOfCell(k,cell1))
+               end do
+            end do
+            !$omp end do
+            call mpas_timer_stop('GOTM avg')
+         endif
 
-         if ( groupItr % memberType == MPAS_POOL_FIELD ) then
-            call mpas_pool_get_array(tracersPool, groupItr % memberName, tracersGroup, timeLevel)
-            ! store tracers
-            if (trim(groupItr % memberName) == 'activeTracers') then
-               if (config_compute_active_tracer_budgets) then
-                  !$omp parallel
-                  !$omp do schedule(runtime)
-                  do iCell = 1, nCells
-                     activeTracerVertMixTendency(:,:,iCell)=tracersGroup(:,:,iCell)
-                  end do
-                  !$omp end do
-                  !$omp end parallel
-               endif
-            endif
+         !
+         !  Implicit vertical solve for momentum
+         !
+         call mpas_timer_start('vmix solve momentum', .false.)
+         if (config_use_implicit_bottom_drag_variable) then
+            call ocn_vel_vmix_tend_implicit_spatially_variable(meshPool, bottomDrag, dt, kineticEnergyCell, &
+            vertViscTopOfEdge, layerThickness, layerThickEdge, normalVelocity, err)
+         else if (config_use_implicit_bottom_drag_variable_mannings.or. &
+            config_use_implicit_bottom_roughness) then
+            ! update bottomDrag via Cd=g*n^2*h^(-1/3)
+            call ocn_vel_vmix_tend_implicit_spatially_variable_mannings(meshPool, forcingPool, bottomDrag, &
+            dt, kineticEnergyCell, &
+            vertViscTopOfEdge, layerThickness, layerThickEdge, normalVelocity, &
+            ssh, bottomDepth, err)
+         else if (config_Rayleigh_friction.or. &
+            config_Rayleigh_bottom_friction.or. &
+            config_Rayleigh_damping_depth_variable) then
+            call ocn_vel_vmix_tend_implicit_rayleigh(meshPool, dt, kineticEnergyCell, &
+            vertViscTopOfEdge, layerThickness, layerThickEdge, normalVelocity, err)
+         else
+            call ocn_vel_vmix_tend_implicit(meshPool, dt, kineticEnergyCell, &
+            vertViscTopOfEdge, layerThickness, layerThickEdge, normalVelocity, err)
+         end if
+         call mpas_timer_stop('vmix solve momentum')
 
-            if ( associated(tracersGroup) ) then
+         !
+         !  Implicit vertical solve for all tracers
+         !
+
+         call mpas_timer_start('vmix solve tracers', .false.)
+         call mpas_pool_begin_iteration(tracersPool)
+         do while ( mpas_pool_get_next_member(tracersPool, groupItr) )
+            
+            if ( groupItr % memberType == MPAS_POOL_FIELD ) then
+               call mpas_pool_get_array(tracersPool, groupItr % memberName, tracersGroup, timeLevel)
+               ! store tracers
                if (trim(groupItr % memberName) == 'activeTracers') then
-                  call mpas_pool_get_array(tracersSurfaceFluxPool, 'nonLocalSurfaceTracerFlux', &
-                           tracerGroupSurfaceFlux)
-               else
-                  modifiedGroupName = trim(groupItr % memberName) // "SurfaceFlux"
-                  call mpas_pool_get_array(tracersSurfaceFluxPool, trim(modifiedGroupName), &
-                          tracerGroupSurfaceFlux)
+                  if (config_compute_active_tracer_budgets) then
+                     !$omp parallel
+                     !$omp do schedule(runtime)
+                     do iCell = 1, nCells
+                        activeTracerVertMixTendency(:,:,iCell)=tracersGroup(:,:,iCell)
+                     end do
+                     !$omp end do
+                     !$omp end parallel
+                  endif
                endif
 
-               call ocn_tracer_vmix_tend_implicit(meshPool, dt, vertDiffTopOfCell, layerThickness, tracersGroup, &
+               if ( associated(tracersGroup) ) then
+                  if (trim(groupItr % memberName) == 'activeTracers') then
+                  call mpas_pool_get_array(tracersSurfaceFluxPool, 'nonLocalSurfaceTracerFlux', &
+                       tracerGroupSurfaceFlux)
+                  else
+                     modifiedGroupName = trim(groupItr % memberName) // "SurfaceFlux"
+                     call mpas_pool_get_array(tracersSurfaceFluxPool, trim(modifiedGroupName), &
+                          tracerGroupSurfaceFlux)
+                  endif
+
+                  call ocn_tracer_vmix_tend_implicit(meshPool, dt, vertDiffTopOfCell, layerThickness, tracersGroup, &
                         vertNonLocalFlux, tracerGroupSurfaceFlux,  &
                         config_cvmix_kpp_nonlocal_with_implicit_mix, err)
-            end if
+               end if
 
-            ! difference tracers to compute influence of vertical mixing and divide by dt
-            if (trim(groupItr % memberName) == 'activeTracers') then
-               if (config_compute_active_tracer_budgets) then
-                  !$omp parallel
-                  !$omp do schedule(runtime)
-                  do iCell = 1, nCells
-                     activeTracerVertMixTendency(:,:,iCell) = &
-                        (tracersGroup(:,:,iCell) - activeTracerVertMixTendency(:,:,iCell)) / dt
-                  end do
-                  !$omp end do
-                  !$omp end parallel
+               ! difference tracers to compute influence of vertical mixing and divide by dt
+               if (trim(groupItr % memberName) == 'activeTracers') then
+                  if (config_compute_active_tracer_budgets) then
+                     !$omp parallel
+                     !$omp do schedule(runtime)
+                     do iCell = 1, nCells
+                        activeTracerVertMixTendency(:,:,iCell) = &
+                            (tracersGroup(:,:,iCell) - activeTracerVertMixTendency(:,:,iCell)) / dt
+                     end do
+                     !$omp end do
+                     !$omp end parallel
+                  endif
                endif
-            endif
 
-         end if
-      end do
-      call mpas_timer_stop('vmix solve tracers')
-
+            end if
+         end do
+         call mpas_timer_stop('vmix solve tracers')
+      end if
       call mpas_timer_stop('vmix imp')
 
    end subroutine ocn_vmix_implicit!}}}
@@ -1289,6 +1297,8 @@ contains
       call ocn_vmix_gotm_init(domain,err_tmp)
       err = ior(err, err_tmp)
       call ocn_vmix_coefs_redi_init(err_tmp)
+      err = ior(err, err_tmp)
+      call ocn_vmix_adc_init(domain, err_tmp)
       err = ior(err, err_tmp)
 
    !--------------------------------------------------------------------
