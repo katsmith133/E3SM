@@ -289,37 +289,24 @@ contains
       !$omp parallel
       !$omp do schedule(runtime)
       do iCell = 1, nCells
-!         if (minLevelCell(iCell) .eq. 1) then
-            fracAbsorbed = 1.0_RKIND - exp( max(-layerThickness(1, iCell) / config_flux_attenuation_coefficient, -100.0_RKIND) )
-            fracAbsorbedRunoff = 1.0_RKIND - exp( max(-layerThickness(1, iCell) / config_flux_attenuation_coefficient_runoff, &
+         fracAbsorbed = 1.0_RKIND - exp( max(-layerThickness(1, iCell) / config_flux_attenuation_coefficient, -100.0_RKIND) )
+         fracAbsorbedRunoff = 1.0_RKIND - exp( max(-layerThickness(1, iCell) / config_flux_attenuation_coefficient_runoff, &
                                  -100.0_RKIND) )
 
-            wt_sfc(iCell) = -(tracerGroupSurfaceFlux(indexTemperature, iCell) - fracAbsorbed * surfaceThicknessFlux(iCell) * &
+         wt_sfc(iCell) = -(tracerGroupSurfaceFlux(indexTemperature, iCell) - fracAbsorbed * surfaceThicknessFlux(iCell) * &
                             activeTracers(indexTemperature,1,iCell) + tracerGroupSurfaceFluxRunoff(indexTemperature,iCell) * &
                             fracAbsorbedRunoff)
 
-            ws_sfc(iCell) = -(tracerGroupSurfaceFlux(indexSalinity, iCell) - fracAbsorbed * surfaceThicknessFlux(iCell) *  &
+         ws_sfc(iCell) = -(tracerGroupSurfaceFlux(indexSalinity, iCell) - fracAbsorbed * surfaceThicknessFlux(iCell) *  &
                             activeTracers(indexSalinity,1,iCell))
 
-            uw_sfc(iCell) = stressZonal(iCell) / rho_sw
+         uw_sfc(iCell) = stressZonal(iCell) / rho_sw
 
-            if(abs(stressMeridional(iCell)) < 1e-6_RKIND) then
-               stressMeridional(iCell) = 0.0_RKIND
-            endif
+         if(abs(stressMeridional(iCell)) < 1e-6_RKIND) then
+            stressMeridional(iCell) = 0.0_RKIND
+         endif
 
-            vw_sfc(iCell) = stressMeridional(iCell) / rho_sw
-
-!         else
-!            wt_sfc(iCell) = 0.0_RKIND
-!            ws_sfc(iCell) = 0.0_RKIND
-!            uw_sfc(iCell) = 0.0_RKIND
-!            vw_sfc(iCell) = 0.0_RKIND
-!         endif
-
-!         do k = 1, minLevelCell(iCell) - 1
-!            ze(k,iCell) = 0.0_RKIND
-!            zm(k,iCell) = 0.0_RKIND
-!         enddo
+         vw_sfc(iCell) = stressMeridional(iCell) / rho_sw
 
          ze(minLevelCell(iCell),iCell) = 0.0_RKIND
          zm(minLevelCell(iCell),iCell) = -layerThickness(minLevelCell(iCell),iCell)/2.0_RKIND
@@ -349,19 +336,19 @@ contains
       endif
 
       !$omp parallel
-      !$omp do schedule(runtime)
+      !$omp do schedule(runtime) 
       do iCell = 1, nCells
+         do k = maxLevelCell(iCell)+1,nVertLevels
+            utend(k,iCell) = 0.0_RKIND
+            vtend(k,iCell) = 0.0_RKIND
+            ttend(k,iCell) = 0.0_RKIND
+            stend(k,iCell) = 0.0_RKIND
+         enddo
          do k = minLevelCell(iCell),maxLevelCell(iCell)
             utend(k,iCell) = velocityZonal(k,iCell)
             vtend(k,iCell) = velocityMeridional(k,iCell)
             ttend(k,iCell) = activeTracers(1,k,iCell)
             stend(k,iCell) = activeTracers(2,k,iCell)
-         enddo
-         do k = maxLevelCell(iCell)+1, nVertLevels
-            utend(k,iCell) = 0.0_RKIND
-            vtend(k,iCell) = 0.0_RKIND
-            ttend(k,iCell) = 0.0_RKIND
-            stend(k,iCell) = 0.0_RKIND
          enddo
       enddo
       !$omp end do
@@ -370,6 +357,9 @@ contains
       call compute_ADC_tends(local_nCells, nVertLevels, minLevelCell, maxLevelCell, ntracers, dt, &
          activeTracers, velocityZonal, velocityMeridional, BruntVaisalaFreqTop, uw_sfc, vw_sfc, &
          wt_sfc, ws_sfc, inSituThermalExpansionCoeff, inSituSalineContractionCoeff, fCell, dThreshMLD)
+
+!      utend(:,:nCells) = (velocityZonal(:,:nCells) - utend(:,:nCells)) / dt
+!      vtend(:,:nCells) = (velocityMeridional(:,:nCells) - vtend(:,:nCells)) / dt
 
       !$omp parallel
       !$omp do schedule(runtime)
