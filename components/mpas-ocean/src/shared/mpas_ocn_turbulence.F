@@ -45,7 +45,7 @@ module ocn_turbulence
 
    real(kind=RKIND),public :: epsilon, &! small value below which w2, v2, u2 cannot go
                        sigmat, Ko, c_b, c_b_tracer, alpha_tracer1, alpha_tracer2, c11, &
-                       alpha_0, alpha_1, alpha_2, B1, Kt, grav, c_mom, &
+                       alpha_0, alpha_1, alpha_2, B1, Kt, grav, c_mom, c_mom_flux, &
                        c_therm, c_mom_w3, c_epsilon, c_slow, c_slow_tracer, slow_w_factor, &
                        kappa_FL, kappa_w3, kappa_VAR, Cww_D, Cww_E, adcRound
 
@@ -162,6 +162,7 @@ module ocn_turbulence
       Kt = 0.4_RKIND
       c_b = config_adc_c_b
       c11 = config_adc_c11
+      c_mom_flux = config_adc_Cmom_flux
       c_mom = config_adc_Cmom
       c_therm = config_adc_Ctherm
       c_mom_w3 = config_adc_Cmom_w3
@@ -560,6 +561,7 @@ module ocn_turbulence
       !$acc                   Kt,           &
       !$acc                   c_1,          &
       !$acc                   c_2,          &
+      !$acc                   c_mom_flux,   &
       !$acc                   c_mom,        &
       !$acc                   c_therm,      &
       !$acc                   c_mom_w3,     &
@@ -766,6 +768,7 @@ module ocn_turbulence
       !$acc                   Kt,           &
       !$acc                   c_1,          &
       !$acc                   c_2,          &
+      !$acc                   c_mom_flux,   &
       !$acc                   c_mom,        &
       !$acc                   c_therm,      &
       !$acc                   c_mom_w3,     &
@@ -1186,6 +1189,7 @@ module ocn_turbulence
       alpha_tracer2 = 0.0_RKIND
       B1 = 0.0_RKIND
       Kt = 0.0_RKIND
+      c_mom_flux = 0.0_RKIND
       c_mom = 0.0_RKIND
       c_therm = 0.0_RKIND
       c_mom_w3 = 0.0_RKIND
@@ -1220,6 +1224,7 @@ module ocn_turbulence
       !$acc                   Kt,           &
       !$acc                   c_1,          &
       !$acc                   c_2,          &
+      !$acc                   c_mom_flux,   &
       !$acc                   c_mom,        &
       !$acc                   c_therm,      &
       !$acc                   c_mom_w3,     &
