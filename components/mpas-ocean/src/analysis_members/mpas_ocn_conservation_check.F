@@ -217,7 +217,8 @@ contains
            conservationCheckAMPool, &
            conservationCheckEnergyAMPool, &
            conservationCheckMassAMPool, &
-           conservationCheckSaltAMPool
+           conservationCheckSaltAMPool, &
+           conservationCheckCarbonAMPool
 
       integer, pointer :: &
            performConservationPrecompute
@@ -225,7 +226,8 @@ contains
       real(kind=RKIND), pointer :: &
            initialEnergy, &
            initialMass, &
-           initialSalt
+           initialSalt, &
+           initialCarbon
 
       err = 0
 
@@ -254,6 +256,12 @@ contains
          call MPAS_pool_get_array(conservationCheckSaltAMPool, "initialSalt", initialSalt)
 
          call compute_total_salt(domain, initialSalt)
+
+         ! initial total carbon
+         call MPAS_pool_get_subpool(domain % blocklist % structs, "conservationCheckCarbonAM", conservationCheckCarbonAMPool)
+         call MPAS_pool_get_array(conservationCheckCarbonAMPool, "initialCarbon", initialCarbon)
+
+         call compute_total_carbon(domain, initialCarbon)
 
          performConservationPrecompute = 0
 
@@ -342,6 +350,9 @@ contains
 
       ! salt conservation check
       call salt_conservation(domain, err)
+
+      ! carbon conservation check
+      call carbon_conservation(domain, err)
 
       if (config_AM_conservationCheck_write_to_logfile .and. &
          MPAS_stream_mgr_ringing_alarms(domain % streamManager, "conservationCheckOutput", ierr=ierr)) then
@@ -1355,6 +1366,276 @@ v=accumulatedLandIceFrazilSalinityFlux; write(m,"('LandIceFrazilSalinityFlux',es
 
 !***********************************************************************
 !
+!  routein carbon_conservation
+!
+!-----------------------------------------------------------------------
+
+   subroutine carbon_conservation(domain, err)
+
+      type(domain_type), intent(inout) :: &
+           domain
+
+      integer, intent(out) :: &
+           err !< Output: error flag
+
+      type(block_type), pointer :: &
+           block
+
+      type(MPAS_pool_type), pointer :: &
+           conservationCheckCarbonAMPool
+
+      real(kind=RKIND), pointer :: &
+           initialCarbon, &
+           finalCarbon, &
+           carbonChange, &
+           netCarbonFlux, &
+           absoluteCarbonError, &
+           relativeCarbonError
+
+      real(kind=RKIND), pointer :: &
+           accumulatedSourceSink, &
+           accumulatedSedimentFlux, &
+           accumulatedSurfaceFlux, &
+           accumulatedTendFlux
+
+      real(kind=RKIND), dimension(:), allocatable :: &
+           sumArray, &
+           sumArrayOut
+
+      type(MPAS_pool_type), pointer :: &
+           meshPool, &
+           forcingPool, &
+           statePool, &
+           tendPool, &
+           tracersSurfaceFluxPool, &
+           tracersTendPool, &
+           ecosysDiagFieldsLevel1
+
+      real(kind=RKIND), dimension(:), pointer :: &
+           areaCell
+
+      integer, dimension(:), pointer :: &
+           maxLevelCell
+
+      type (MPAS_timeInterval_type) :: &
+           timeStepESMF
+
+      real(kind=RKIND) :: &
+           dt, dtAvg, v, A, s, c
+
+      integer, pointer :: &
+           nCellsSolve, &
+           index_DICTend, index_DOCTend, &
+           index_DOCrTend, index_zooCTend, &
+           index_spCTend, index_diatCTend, &
+           index_diazCTend, index_spCaCO3Tend, &
+           index_DICFlux, index_DOCFlux, &
+           index_DOCrFlux, index_zooCFlux, &
+           index_spCFlux, index_diatCFlux, &
+           index_diazCFlux
+
+      real(kind=RKIND), dimension(:, :, :), pointer :: &
+           ecosysTracersTend
+
+      real(kind=RKIND), dimension(:, :),    pointer :: &
+           ecosysTracersSurfaceFlux, &
+           ecosys_diag_calcToSed, &
+           ecosys_diag_pocToSed
+
+      real(kind=RKIND), dimension(:),       pointer :: &
+           ecosys_diag_Jint_Ctot
+
+      integer :: &
+           iCell, &
+           k, &
+           ierr
+
+      integer, parameter :: &
+           nSums = 4
+
+      character(len=160) :: &
+           m
+
+      call mpas_set_timeInterval(timeStepESMF, timeString=config_dt, ierr=err)
+      call mpas_get_timeInterval(timeStepESMF, dt=dt)
+      dtAvg = dt * accumulatedFluxCounter
+
+      call MPAS_pool_get_subpool(domain % blocklist % structs, "conservationCheckCarbonAM", conservationCheckCarbonAMPool)
+
+      call MPAS_pool_get_array(conservationCheckCarbonAMPool, "accumulatedSourceSink", accumulatedSourceSink)
+      call MPAS_pool_get_array(conservationCheckCarbonAMPool, "accumulatedSedimentFlux", accumulatedSedimentFlux)
+      call MPAS_pool_get_array(conservationCheckCarbonAMPool, "accumulatedSurfaceFlux", accumulatedSurfaceFlux)
+      call MPAS_pool_get_array(conservationCheckCarbonAMPool, "accumulatedTendFlux", accumulatedTendFlux)
+
+      !-------------------------------------------------------------
+      ! Net carbon flux to ocean
+      !-------------------------------------------------------------
+
+      allocate(sumArray(nSums))
+      allocate(sumArrayOut(nSums))
+
+      sumArray = 0.0_RKIND
+
+      block => domain % blocklist
+      do while (associated(block))
+         call MPAS_pool_get_dimension(block % dimensions, "nCellsSolve", nCellsSolve)
+         
+         call MPAS_pool_get_subpool(block % structs, "mesh", meshPool)
+         call MPAS_pool_get_subpool(block % structs, "forcing", forcingPool)
+         call MPAS_pool_get_subpool(block % structs, "state", statePool)
+         
+         call MPAS_pool_get_array(meshPool, "areaCell", areaCell)
+         call mpas_pool_get_array(meshPool,  'maxLevelCell',   maxLevelCell)
+
+         call mpas_pool_get_subpool(block % structs, 'tend',                     tendPool)
+         call mpas_pool_get_subpool(tendPool,    'tracersTend',            tracersTendPool)
+         call mpas_pool_get_subpool(forcingPool, 'tracersSurfaceFlux',     tracersSurfaceFluxPool)
+         call mpas_pool_get_subpool(forcingPool, 'ecosysDiagFieldsLevel1', ecosysDiagFieldsLevel1)
+
+         call mpas_pool_get_array(tracersTendPool,        'ecosysTracersTend',        ecosysTracersTend       )
+         call mpas_pool_get_array(tracersSurfaceFluxPool, 'ecosysTracersSurfaceFlux', ecosysTracersSurfaceFlux)
+         call mpas_pool_get_array(ecosysDiagFieldsLevel1, 'ecosys_diag_calcToSed',    ecosys_diag_calcToSed   )
+         call mpas_pool_get_array(ecosysDiagFieldsLevel1, 'ecosys_diag_pocToSed',     ecosys_diag_pocToSed    )
+         call mpas_pool_get_array(ecosysDiagFieldsLevel1, 'ecosys_diag_Jint_Ctot',    ecosys_diag_Jint_Ctot   )
+
+         call mpas_pool_get_dimension(tracersTendPool, 'index_DICTend',     index_DICTend)
+         call mpas_pool_get_dimension(tracersTendPool, 'index_DOCTend',     index_DOCTend)
+         call mpas_pool_get_dimension(tracersTendPool, 'index_DOCrTend',    index_DOCrTend)
+         call mpas_pool_get_dimension(tracersTendPool, 'index_zooCTend',    index_zooCTend)
+         call mpas_pool_get_dimension(tracersTendPool, 'index_spCTend',     index_spCTend)
+         call mpas_pool_get_dimension(tracersTendPool, 'index_diatCTend',   index_diatCTend)
+         call mpas_pool_get_dimension(tracersTendPool, 'index_diazCTend',   index_diazCTend)
+         call mpas_pool_get_dimension(tracersTendPool, 'index_spCaCO3Tend', index_spCaCO3Tend)
+
+         call mpas_pool_get_dimension(tracersSurfaceFluxPool, 'index_DICFlux',     index_DICFlux)
+         call mpas_pool_get_dimension(tracersSurfaceFluxPool, 'index_DOCFlux',     index_DOCFlux)
+         call mpas_pool_get_dimension(tracersSurfaceFluxPool, 'index_DOCrFlux',    index_DOCrFlux)
+         call mpas_pool_get_dimension(tracersSurfaceFluxPool, 'index_zooCFlux',    index_zooCFlux)
+         call mpas_pool_get_dimension(tracersSurfaceFluxPool, 'index_spCFlux',     index_spCFlux)
+         call mpas_pool_get_dimension(tracersSurfaceFluxPool, 'index_diatCFlux',   index_diatCFlux)
+         call mpas_pool_get_dimension(tracersSurfaceFluxPool, 'index_diazCFlux',   index_diazCFlux)
+
+         do iCell = 1, nCellsSolve
+            sumArray(1) = sumArray(1) + areaCell(iCell) * ecosys_diag_Jint_Ctot(iCell)
+            sumArray(3) = sumArray(3) + areaCell(iCell) * (               &
+                       ecosysTracersSurfaceFlux(index_DICFlux,    iCell)  &
+                     + ecosysTracersSurfaceFlux(index_DOCFlux,    iCell)  &
+                     + ecosysTracersSurfaceFlux(index_DOCrFlux,    iCell) &
+                     + ecosysTracersSurfaceFlux(index_zooCFlux,   iCell)  &
+                     + ecosysTracersSurfaceFlux(index_spCFlux,    iCell)  &
+                     + ecosysTracersSurfaceFlux(index_diatCFlux,  iCell)  &
+                     + ecosysTracersSurfaceFlux(index_diazCFlux,  iCell))
+              
+            do k = 1, maxLevelCell(iCell)
+               sumArray(2) = sumArray(2) + areaCell(iCell) * (         &
+                       ecosys_diag_calcToSed(k, iCell)
+                     + ecosys_diag_pocToSed(k, iCell))
+               sumArray(4) = sumArray(4) + areaCell(iCell) * (         &
+                       ecosysTracersTend(index_DICTend,     k, iCell)  &
+                     + ecosysTracersTend(index_DOCTend,     k, iCell)  &
+                     + ecosysTracersTend(index_DOCrTend,    k, iCell)  &
+                     + ecosysTracersTend(index_zooCTend,    k, iCell)  &
+                     + ecosysTracersTend(index_spCTend,     k, iCell)  &
+                     + ecosysTracersTend(index_diatCTend,   k, iCell)  &
+                     + ecosysTracersTend(index_diazCTend,   k, iCell)  &
+                     + ecosysTracersTend(index_spCaCO3Tend, k, iCell))
+            enddo ! k
+         enddo ! iCell
+
+         block => block % next
+      enddo
+
+      ! perform the sums over processors
+      call MPAS_dmpar_sum_real_array(domain % dminfo, nSums, sumArray, sumArrayOut)
+
+      accumulatedSourceSink = accumulatedSourceSink + sumArray(1)
+      accumulatedSedimentFlux = accumulatedSedimentFlux + sumArray(2)
+      accumulatedSurfaceFlux = accumulatedSurfaceFlux + sumArray(3)
+      accumulatedTendFlux = accumulatedTendFlux + sumArray(4)
+
+      ! cleanup
+      deallocate(sumArray)
+      deallocate(sumArrayOut)
+
+      !-------------------------------------------------------------
+      ! Carbon conservation error
+      !-------------------------------------------------------------
+
+      if (MPAS_stream_mgr_ringing_alarms(domain % streamManager, "conservationCheckOutput", ierr=ierr)) then
+         
+         ! Average the fluxes
+         accumulatedSourceSink = accumulatedSourceSink /accumulatedFluxCounter
+         accumulatedSedimentFlux = accumulatedSedimentFlux /accumulatedFluxCounter
+         accumulatedSurfaceFlux = accumulatedSurfaceFlux /accumulatedFluxCounter
+         accumulatedTendFlux = accumulatedTendFlux /accumulatedFluxCounter
+
+         ! get initial carbon
+         call MPAS_pool_get_array(conservationCheckCarbonAMPool, "initialCarbon", initialCarbon)
+         
+         ! get final carbon
+         call MPAS_pool_get_array(conservationCheckCarbonAMPool, "finalCarbon", finalCarbon)
+         call compute_total_carbon(domain, finalCarbon)
+
+         ! compute carbon change
+         call MPAS_pool_get_array(conservationCheckCarbonAMPool, "carbonChange", carbonChange)
+         carbonChange = finalCarbon - initialCarbon
+
+         ! calculate the final net carbon flux to ocean
+         call MPAS_pool_get_array(conservationCheckCarbonAMPool, "netCarbonFlux", netCarbonFlux)
+
+         netCarbonFlux = &
+                accumulatedSourceSink &
+                + accumulatedSedimentFlux &
+                + accumulatedSurfaceFlux &
+                + accumulatedTendFlux
+
+         ! compute the final carbon error
+         call MPAS_pool_get_array(conservationCheckCarbonAMPool, "absoluteCarbonError", absoluteCarbonError)
+         call MPAS_pool_get_array(conservationCheckCarbonAMPool, "relativeCarbonError", relativeCarbonError)
+
+         !-------------------------------------------------------------
+         ! Output to log file
+         !-------------------------------------------------------------
+
+         if (config_AM_conservationCheck_write_to_logfile) then
+            
+            call mpas_log_write('')
+            call mpas_log_write('----------------------------------------------------------')
+            call mpas_log_write('CARBON CONSERVATION CHECK')
+            call mpas_log_write('')
+            A = earthAreaE3SM
+            c = 1.0e6_RKIND/A
+            s = 0.0_RKIND
+            call mpas_log_write('CARBON FLUXES')
+            call mpas_log_write('MPAS-Ocean name            W (raw sum)    coupler name    short name         W/m^2 (flux/A)')
+v=accumulatedSourceSink;   write(m,"('sourceSink             ',es16.8,'                                 ',f16.8)") v,v*c; call mpas_log_write(m); s=s+v
+v=accumulatedSedimentFlux; write(m,"('sedimentFlux           ',es16.8,'                                 ',f16.8)") v,v*c; call mpas_log_write(m); s=s+v
+v=accumulatedSurfaceFlux;  write(m,"('surfaceFlux            ',es16.8,'                                 ',f16.8)") v,v*c; call mpas_log_write(m); s=s+v
+v=accumulatedTendFlux;     write(m,"('tendFlux               ',es16.8,'                                 ',f16.8)") v,v*c; call mpas_log_write(m); s=s+v
+                           write(m,"('SUM VOLUME FLUXES      ',es16.8,'                                 ',f16.8,es16.8)") s, s*c; call mpas_log_write(m)
+            call mpas_log_write(' ')
+
+            call mpas_log_write('CHANGE IN CARBON: computed from ocean domain')
+            call mpas_log_write('                       kg ')
+            write(m,"('Initial carbon       ',es16.8)") initialCarbon; call mpas_log_write(m)
+            write(m,"('Final carbon         ',es16.8)") finalCarbon; call mpas_log_write(m)
+            write(m,"('Carbon change        ',es16.8)") carbonChange; call mpas_log_write(m)
+            call mpas_log_write(' ')
+            call mpas_log_write('CARBON CONSERVATION SUMMARY')
+            call mpas_log_write('                       kg              kg/s            kg/m^2/s*1e6')
+            write(m,"('Carbon change         ', 3es16.8)")  carbonChange, carbonChange/dtAvg, carbonChange/dtAvg*c ; call mpas_log_write(m)
+            write(m,"('Net carbon flux       ', 3es16.8)")  netCarbonFlux * dtAvg, netCarbonFlux, netCarbonFlux*c ; call mpas_log_write(m)
+            write(m,"('Absolute carbon error ', 3es16.8)")  absoluteCarbonError, absoluteCarbonError/dtAvg, absoluteCarbonError/dtAvg*c ; call mpas_log_write(m)
+            call mpas_log_write(' ')
+            write(m,"('RELATIVE CARON ERROR =', es16.8)")  relativeCarbonError; call mpas_log_write(m)
+            call mpas_log_write(' ')
+            
+         endif
+      endif
+    end subroutine carbon_conservation
+            
+!***********************************************************************
+!
 !  routine compute_total_energy
 !
 !> \brief   Compute total energy of sea-ice system
@@ -1630,6 +1911,107 @@ v=accumulatedLandIceFrazilSalinityFlux; write(m,"('LandIceFrazilSalinityFlux',es
 
 !***********************************************************************
 !
+!  routine compute_total_carbon
+!
+!-----------------------------------------------------------------------
+
+    subroutine compute_total_carbon(domain, totalCarbon)
+
+      type (domain_type), intent(inout) :: &
+           domain
+
+      real(kind=RKIND), intent(out) :: &
+           totalCarbon
+
+      type(block_type), pointer :: &
+           block
+
+      type(MPAS_pool_type), pointer :: &
+           meshPool, &
+           statePool, &
+           tracersPool
+
+      real(kind=RKIND), dimension(:), pointer :: &
+           areaCell
+
+      real(kind=RKIND), dimension(:,:), pointer :: &
+           layerThickness
+
+      real(kind=RKIND), dimension(:,:,:), pointer :: &
+           ecosysTracers
+
+      real(kind=RKIND) :: &
+           carbon
+
+      integer, pointer :: &
+           nCellsSolve, &
+           nVertLevels, &
+           indexDIC, &
+           indexDOC, &
+           indexDICr, &
+           indexZooC, &
+           indexSpC, &
+           indexDiatC, &
+           indexDiazC, &
+           indexSpCaCO3
+
+      integer :: &
+           iCell, &
+           k
+
+      integer, dimension(:), pointer :: minLevelCell, maxLevelCell
+
+      carbon = 0.0_RKIND
+
+      block => domain % blocklist
+      do while (associated(block))
+
+         call MPAS_pool_get_dimension(block % dimensions, "nCellsSolve", nCellsSolve)
+         call MPAS_pool_get_dimension(block % dimensions, "nVertLevels", nVertLevels)
+
+         call MPAS_pool_get_subpool(block % structs, "mesh", meshPool)
+         call MPAS_pool_get_subpool(block % structs, "state", statePool)
+
+         call MPAS_pool_get_array(meshPool, "areaCell", areaCell)
+         call mpas_pool_get_array(meshPool, 'minLevelCell', minLevelCell)
+         call mpas_pool_get_array(meshPool, 'maxLevelCell', maxLevelCell)
+         call MPAS_pool_get_array(statePool, "layerThickness", layerThickness, 1)
+
+         call mpas_pool_get_subpool(statePool, 'tracers', tracersPool)
+         call mpas_pool_get_dimension(tracersPool, 'index_DIC', indexDIC)
+         call mpas_pool_get_dimension(tracersPool, 'index_DOC', indexDOC)
+         call mpas_pool_get_dimension(tracersPool, 'index_DOCr', indexDOCr)
+         call mpas_pool_get_dimension(tracersPool, 'index_zooC', indexZooC)
+         call mpas_pool_get_dimension(tracersPool, 'index_spC', indexSpC)
+         call mpas_pool_get_dimension(tracersPool, 'index_diatC', indexDiatC)
+         call mpas_pool_get_dimension(tracersPool, 'index_diazC', indexDiazC)
+         call mpas_pool_get_dimension(tracersPool, 'index_spCaCO3', indexSpCaCO3)
+         call mpas_pool_get_array(tracersPool, 'ecosysTracers', ecosysTracers, 1)
+
+         do iCell = 1, nCellsSolve
+            do k = minLevelCell(iCell), maxLevelCell(iCell)
+               carbon = carbon + &
+                    areaCell(iCell) * layerThickness(k,iCell) * ( &
+                    ecosysTracers(indexDIC,k,iCell) +             &
+                    ecosysTracers(indexDOC,k,iCell) +             &
+                    ecosysTracers(indexDOCr,k,iCell) +            &
+                    ecosysTracers(indexZooC,k,iCell) +            &
+                    ecosysTracers(indexSpC,k,iCell) +             &
+                    ecosysTracers(indexDiatC,k,iCell) +           &
+                    ecosysTracers(indexDiazC,k,iCell) +           &
+                    ecosysTracers(indexSpCaCO3,k,iCell))
+            enddo
+         enddo
+         block => block % next
+      enddo
+
+      ! sum across processors
+      call MPAS_dmpar_sum_real(domain % dminfo, carbon, totalCarbon)
+
+    end subroutine compute_total_carbon
+      
+!***********************************************************************
+!
 !  routine reset_accumulated_variables
 !
 !> \brief   Reset the accumulated fluxes
@@ -1648,7 +2030,8 @@ v=accumulatedLandIceFrazilSalinityFlux; write(m,"('LandIceFrazilSalinityFlux',es
       type(MPAS_pool_type), pointer :: &
            conservationCheckEnergyAMPool, &
            conservationCheckMassAMPool, &
-           conservationCheckSaltAMPool
+           conservationCheckSaltAMPool, &
+           conservationCheckCarbonAMPool
 
       real(kind=RKIND), pointer :: &
            accumulatedLatentHeatFlux, &
@@ -1688,6 +2071,12 @@ v=accumulatedLandIceFrazilSalinityFlux; write(m,"('LandIceFrazilSalinityFlux',es
            accumulatedSeaIceSalinityFlux, &
            accumulatedFrazilSalinityFlux, &
            accumulatedLandIceFrazilSalinityFlux
+
+      real(kind=RKIND), pointer :: &
+           accumulatedSourceSink, &
+           accumulatedSedimentFlux, &
+           accumulatedSurfaceFlux, &
+           accumulatedTendFlux
 
       call MPAS_pool_get_subpool(domain % blocklist % structs, "conservationCheckEnergyAM", conservationCheckEnergyAMPool)
 
@@ -1769,6 +2158,18 @@ v=accumulatedLandIceFrazilSalinityFlux; write(m,"('LandIceFrazilSalinityFlux',es
       accumulatedSeaIceSalinityFlux = 0.0_RKIND
       accumulatedFrazilSalinityFlux = 0.0_RKIND
       accumulatedLandIceFrazilSalinityFlux = 0.0_RKIND
+
+      call MPAS_pool_get_subpool(domain % blocklist % structs, "conservationCheckCarbonAM", conservationCheckCarbonAMPool)
+
+      call MPAS_pool_get_array(conservationCheckCarbonAMPool, "accumulatedSourceSink", accumulatedSourceSink)
+      call MPAS_pool_get_array(conservationCheckCarbonAMPool, "accumulatedSedimentFlux", accumulatedSedimentFlux)
+      call MPAS_pool_get_array(conservationCheckCarbonAMPool, "accumulatedSurfaceFlux", accumulatedSurfaceFlux)
+      call MPAS_pool_get_array(conservationCheckCarbonAMPool, "accumulatedTendFlux", accumulatedTendFlux)
+
+      accumulatedSourceSink = 0.0_RKIND
+      accumulatedSedimentFlux = 0.0_RKIND
+      accumulatedSurfaceFlux = 0.0_RKIND
+      accumulatedTendFlux = 0.0_RKIND
 
     end subroutine reset_accumulated_variables
 

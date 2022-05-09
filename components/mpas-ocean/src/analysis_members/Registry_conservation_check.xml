@@ -198,6 +198,38 @@
 			 description="Salinity flux from frazil to Land Ice, given to coupler. Positive into the ocean."
 		/>
 	</var_struct>
+	        <var_struct name="conservationCheckCarbonAM" time_levs="1" packages="conservationCheckAMPKG">
+                <var name="initialCarbon" type="real" dimensions="Time" units="kg"
+                     description="Total initial carbon of ocean"
+                />
+                <var name="finalCarbon" type="real" dimensions="Time" units="kg"
+                     description=""
+                />
+                <var name="carbonChange" type="real" dimensions="Time" units="kg"
+                     description=""
+                />
+                <var name="netCarbonFlux" type="real" dimensions="Time" units="kg"
+                     description=""
+                />
+                <var name="absoluteCarbonError" type="real" dimensions="Time" units="kg"
+                     description=""
+                />
+                <var name="relativeCarbonError" type="real" dimensions="Time" units="kg"
+                     description=""
+                />
+                <var name="accumulatedSourceSink" type="real" dimensions="Time" units="kg"
+                     description=""
+                />
+                <var name="accumulatedSedimentFlux" type="real" dimensions="Time" units="kg"
+                     description=""
+                />
+                <var name="accumulatedSurfaceFlux" type="real" dimensions="Time" units="kg"
+                     description=""
+                />
+                <var name="accumulatedTendFlux" type="real" dimensions="Time" units="kg"
+                     description=""
+                />
+	</var_struct>
 	<streams>
 		<stream name="conservationCheckOutput" type="output"
 				mode="forward;analysis"
@@ -226,6 +258,12 @@
 			<var name="netSaltFlux"/>
 			<var name="absoluteSaltError"/>
 			<var name="relativeSaltError"/>
+			<var name="initialCarbon"/>
+                        <var name="finalCarbon"/>
+                        <var name="carbonChange"/>
+                        <var name="netCarbonFlux"/>
+                        <var name="absoluteCarbonError"/>
+                        <var name="relativeCarbonError"/>
             <var name="accumulatedLatentHeatFlux"/>
             <var name="accumulatedSensibleHeatFlux"/>
             <var name="accumulatedLongWaveHeatFluxUp"/>
@@ -276,6 +314,7 @@
 			<var name="initialEnergy"/>
 			<var name="initialMass"/>
 			<var name="initialSalt"/>
+			<var name="initialCarbon"/>
             <var name="accumulatedLatentHeatFlux"/>
             <var name="accumulatedSensibleHeatFlux"/>
             <var name="accumulatedLongWaveHeatFluxUp"/>
