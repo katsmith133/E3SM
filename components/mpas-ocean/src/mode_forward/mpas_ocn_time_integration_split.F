@@ -48,6 +48,7 @@ module ocn_time_integration_split
    use ocn_effective_density_in_land_ice
    use ocn_surface_land_ice_fluxes
    use ocn_transport_tests
+   use ocn_tracer_supercycle
 
    implicit none
    private
@@ -186,6 +187,8 @@ module ocn_time_integration_split
          lat,              &! cell latitude
          sshCell1,         &! sea sfc height in neighboring cells
          sshCell2
+
+      logical :: updated_tracers, is_active, exchange
 
       real (kind=RKIND), dimension(:,:), allocatable:: &
          uTemp
@@ -382,6 +385,8 @@ module ocn_time_integration_split
                                           lowFreqDivergenceTend)
 
       call mpas_pool_get_array(tracersPool, 'activeTracers', activeTracersNew, 2)
+
+      call mpas_pool_get_array(meshPool, 'areaCell', areaCell)
 
       allocate(bottomDepthEdge(nEdgesAll+1))
 
@@ -590,6 +595,18 @@ module ocn_time_integration_split
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       do splitExplicitStep = 1, numTSIterations
+         if (ocn_tracer_supercycle_use()) then
+            call ocn_tracer_supercycle_set_split_explicit_step( &
+                 split_explicit_step, config_n_ts_iter)
+            block => domain % blocklist
+            do while (associated(block))
+               call mpas_pool_get_array(statePool, 'layerThickness', layerThicknessCur, 1)
+               call mpas_pool_get_subpool(block % structs, 'tend', tendPool)
+               call ocn_tracer_supercycle_set_layerThickness0( &
+                    tendPool, nCells, maxLevelCell, layerThicknessCur)
+               block => block % next
+            end do
+         end if
 
          if (config_disable_thick_all_tend .and. &
              config_disable_vel_all_tend .and. &
@@ -1770,11 +1787,17 @@ module ocn_time_integration_split
             if (groupItr%memberType == MPAS_POOL_FIELD ) then
                ! Only compute tendencies for active tracers if
                ! activeTracersOnly flag is true.
-               if (.not. activeTracersOnly .or. &
-                   trim(groupItr%memberName)=='activeTracersTend') then
-                  call mpas_dmpar_field_halo_exch(domain, &
-                                                  groupItr%memberName)
+!               if (.not. activeTracersOnly .or. &
+!                   trim(groupItr%memberName)=='activeTracersTend') then
+!                  call mpas_dmpar_field_halo_exch(domain, &
+!                                                  groupItr%memberName)
+               is_active = trim(groupItr % memberName)=='activeTracersTend'
+               exchange = .not. activeTracersOnly .or. is_active
+               if (ocn_tracer_supercycle_use()) then
+                  exchange = exchange .and. &
+                       (is_active .or. ocn_tracer_supercycle_is_tracer_step())
                end if
+               if (exchange) call mpas_dmpar_field_halo_exch(domain, groupItr % memberName)
             end if
          end do
          call mpas_timer_stop("se halo tracers")
@@ -2078,21 +2101,41 @@ module ocn_time_integration_split
                                               modifiedGroupName, &
                                               tracersGroupTend)
 
-                     !$omp parallel
-                     !$omp do schedule(runtime) private(k)
-                     do iCell = 1, nCellsAll
-                     do k = minLevelCell(iCell), maxLevelCell(iCell)
-                        tracersGroupNew(:,k,iCell) = &
-                       (tracersGroupCur(:,k,iCell) * &
-                        layerThicknessCur(k,iCell) + dt* &
-                       tracersGroupTend(:,k,iCell))/ &
-                        layerThicknessNew(k,iCell)
-                     end do
-                     end do
+!                     !$omp parallel
+!                     !$omp do schedule(runtime) private(k)
+!                     do iCell = 1, nCellsAll
+!                     do k = minLevelCell(iCell), maxLevelCell(iCell)
+!                        tracersGroupNew(:,k,iCell) = &
+!                       (tracersGroupCur(:,k,iCell) * &
+!                        layerThicknessCur(k,iCell) + dt* &
+!                       tracersGroupTend(:,k,iCell))/ &
+!                        layerThicknessNew(k,iCell)
+                     updated_tracers = .false.
+                     if (ocn_tracer_supercycle_use()) then
+                        if (trim(groupItr % memberName) /= 'activeTracers') then
+                           call ocn_tracer_supercycle_update( &
+                                tendPool, nCells, maxLevelCell, dt, tracersGroupCur, &
+                                tracersGroupTend, layerThicknessNew, tracersGroupNew)
+                           updated_tracers = .true.
+                        end if
+                     end if
+                     if (.not. updated_tracers) then
 #ifndef MPAS_OPENACC
-                     !$omp end do
-                     !$omp end parallel
+                        !$omp parallel
+                        !$omp do schedule(runtime) private(k)
 #endif
+                        do iCell = 1, nCells
+                           do k = 1, maxLevelCell(iCell)
+                              tracersGroupNew(:,k,iCell) = (tracersGroupCur(:,k,iCell) * layerThicknessCur(k,iCell) + dt &
+                                   * tracersGroupTend(:,k,iCell) ) / layerThicknessNew(k,iCell)
+                           end do
+                        end do
+
+#ifndef MPAS_OPENACC
+                        !$omp end do
+                        !$omp end parallel
+#endif
+                     end if
 
                      ! limit salinity in separate loop
                      if (trim(groupItr%memberName) == &
@@ -2440,6 +2483,11 @@ module ocn_time_integration_split
       call mpas_pool_begin_iteration(tracersPool)
       do while ( mpas_pool_get_next_member(tracersPool, groupItr) )
          if (groupItr%memberType == MPAS_POOL_FIELD) then
+
+            is_active = trim(groupItr % memberName) == 'activeTracers'
+            if (ocn_tracer_supercycle_use()) then
+               if (.not. is_active .and. .not. ocn_tracer_supercycle_is_tracer_step()) cycle
+            end if
 
             ! Reset iAge to zero where mask == 0
             if (config_use_idealAgeTracers.and.trim(groupItr%memberName) == 'idealAgeTracers') then
