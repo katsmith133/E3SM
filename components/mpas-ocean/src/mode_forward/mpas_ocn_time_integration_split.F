@@ -597,7 +597,7 @@ module ocn_time_integration_split
       do splitExplicitStep = 1, numTSIterations
          if (ocn_tracer_supercycle_use()) then
             call ocn_tracer_supercycle_set_split_explicit_step( &
-                 split_explicit_step, config_n_ts_iter)
+                 splitExplicitStep, config_n_ts_iter)
             block => domain % blocklist
             do while (associated(block))
                call mpas_pool_get_array(statePool, 'layerThickness', layerThicknessCur, 1)

@@ -99,7 +99,7 @@ contains
     if (modulo(timestep-1, supercycle) == 0) then
        call mpas_pool_get_array(tendPool, 'scLayerThickness0', layerThickness0)
        !$omp parallel
-       !$omp parallel do private(k)
+       !$omp do private(k)
        do ic = 1, nCells
           do k = 1, maxLevelCell(ic)
              layerThickness0(k,ic) = layerThickness(k,ic)
@@ -221,7 +221,7 @@ contains
     call mpas_pool_get_array(tendPool, 'scAccumLayerThicknessEdge', layerThicknessEdge)
     call mpas_pool_get_array(tendPool, 'scAccumZMid', zMid)
     call mpas_pool_get_array(tendPool, 'scAccumVertAleTransportTop', vertAleTransportTop)
-    !$omp end do
+    !$omp parallel
     !$omp do private(k)
     do ie = 1, nEdges
        do k = 1, nVertLevels

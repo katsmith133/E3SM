@@ -75,6 +75,7 @@ module ocn_tracer_ecosys
    real (kind=RKIND), parameter :: convertLengthMKStoCGS = 100.0_RKIND
    real (kind=RKIND), parameter :: convertLengthCGStoMKS = 0.01_RKIND
    real (kind=RKIND), parameter :: convertLengthSquaredMKStoCGS = 1.0e4_RKIND
+   real (kind=RKIND) :: convertLengthSquaredCGStoMKS = 1.0e-4_RKIND
 
    integer, parameter ::  &
       ecosys_tracer_cnt = 32,  &
@@ -499,16 +500,6 @@ module ocn_tracer_ecosys
 
       real (kind=RKIND) :: ecosysMissingValue = -999.
 
-      real (kind=RKIND) :: &
-         PascalsToAtmospheres = 1.0_RKIND/101.325e+3_RKIND
-
-      ! flux routine wants CGS units
-      ! then convert back to MKS after
-      real (kind=RKIND) :: convertLengthMKStoCGS = 100.0_RKIND
-      real (kind=RKIND) :: convertLengthCGStoMKS = 0.01_RKIND
-      real (kind=RKIND) :: convertLengthSquaredMKStoCGS = 1.0e4_RKIND
-      real (kind=RKIND) :: convertLengthSquaredCGStoMKS = 1.0e-4_RKIND
-
       logical :: verbose = .false.
       character(strKIND) :: logMessage
 
@@ -804,7 +795,7 @@ contains
 
       err = 0
 
-      call mpas_timer_start("ecosys source-sink")
+!      call mpas_timer_start("ecosys source-sink")
 
       call mpas_pool_get_subpool(forcingPool, 'ecosysAuxiliary', ecosysAuxiliary)
 
@@ -983,7 +974,6 @@ contains
       else
          !DWJ 08/05/2016: This loop needs OpenMP added to it.
          do iCell=1,nCellsSolve
-            do iCell=1,nCellsSolve
             call wrap_SourceSink(ecosysTracers(:,:,iCell), 0.0_RKIND, 1.0_RKIND)
          end do
       end if
@@ -1082,8 +1072,8 @@ contains
          call marbl_instances(1)%interior_tendency_compute()
 
          if (marbl_instances(1)%StatusLog%labort_marbl) &
-           call mpas_log_write("WARNING: problem in MARBL interior_tendency_compute", MPAS_LOG_CRIT)
-        call marbl_instances(1)%StatusLog%erase()
+            call mpas_log_write("WARNING: problem in MARBL interior_tendency_compute", MPAS_LOG_CRIT)
+         call marbl_instances(1)%StatusLog%erase()
 
          do iLevel=minLevelCell(iCell),maxLevelCell(iCell)
 
@@ -1106,92 +1096,92 @@ contains
 
             if (config_ecosysTracers_diagnostic_fields_level1) then
 !!! KMS Fix to Match MARBL
-              ecosys_diag_PAR_avg(iLevel,iCell) = c_init*ecosys_diag_PAR_avg(iLevel,iCell)  &
+              ecosys_diag_PAR_avg(iLevel,iCell) = c_init*ecosys_diag_PAR_avg(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_PAR_avg_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_PAR_avg_allocatedInMARBL)
 
-              ecosys_diag_POC_FLUX_IN(iLevel,iCell) = c_init*ecosys_diag_POC_FLUX_IN(iLevel,iCell) &
+              ecosys_diag_POC_FLUX_IN(iLevel,iCell) = c_init*ecosys_diag_POC_FLUX_IN(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_POC_FLUX_IN_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_POC_FLUX_IN_allocatedInMARBL)
 
-              ecosys_diag_CaCO3_FLUX_IN(iLevel,iCell) = c_init*ecosys_diag_CaCO3_FLUX_IN(iLevel,iCell) &
+              ecosys_diag_CaCO3_FLUX_IN(iLevel,iCell) = c_init*ecosys_diag_CaCO3_FLUX_IN(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_CaCO3_FLUX_IN_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_CaCO3_FLUX_IN_allocatedInMARBL)
 
-              ecosys_diag_CaCO3_ALT_CO2_FLUX_IN(iLevel,iCell) = c_init*ecosys_diag_CaCO3_ALT_CO2_FLUX_IN(iLevel,iCell) &
+              ecosys_diag_CaCO3_ALT_CO2_FLUX_IN(iLevel,iCell) = c_init*ecosys_diag_CaCO3_ALT_CO2_FLUX_IN(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_CaCO3_ALT_CO2_FLUX_IN_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_CaCO3_ALT_CO2_FLUX_IN_allocatedInMARBL)
 
-              ecosys_diag_graze_auto_TOT(iLevel,iCell) = c_init*ecosys_diag_graze_auto_TOT(iLevel,iCell) &
+              ecosys_diag_graze_auto_TOT(iLevel,iCell) = c_init*ecosys_diag_graze_auto_TOT(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_graze_auto_TOT_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_graze_auto_TOT_allocatedInMARBL)
 
-              ecosys_diag_zoo_loss(iLevel,iCell) = c_init*ecosys_diag_zoo_loss(iLevel,iCell) &
+              ecosys_diag_zoo_loss(iLevel,iCell) = c_init*ecosys_diag_zoo_loss(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_zoo_loss_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_zoo_loss_allocatedInMARBL)
 
-              ecosys_diag_zoo_loss_poc(iLevel,iCell) = c_init*ecosys_diag_zoo_loss_poc(iLevel,iCell) &
+              ecosys_diag_zoo_loss_poc(iLevel,iCell) = c_init*ecosys_diag_zoo_loss_poc(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_zoo_loss_poc_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_zoo_loss_poc_allocatedInMARBL)
 
-              ecosys_diag_zoo_loss_doc(iLevel,iCell) = c_init*ecosys_diag_zoo_loss_doc(iLevel,iCell) &
+              ecosys_diag_zoo_loss_doc(iLevel,iCell) = c_init*ecosys_diag_zoo_loss_doc(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_zoo_loss_doc_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_zoo_loss_doc_allocatedInMARBL)
 
-              ecosys_diag_graze_zoo(iLevel,iCell) = c_init*ecosys_diag_graze_zoo(iLevel,iCell) &
+              ecosys_diag_graze_zoo(iLevel,iCell) = c_init*ecosys_diag_graze_zoo(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_graze_zoo_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_graze_zoo_allocatedInMARBL)
 
-              ecosys_diag_graze_zoo_poc(iLevel,iCell) = c_init*ecosys_diag_graze_zoo_poc(iLevel,iCell) &
+              ecosys_diag_graze_zoo_poc(iLevel,iCell) = c_init*ecosys_diag_graze_zoo_poc(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_graze_zoo_poc_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_graze_zoo_poc_allocatedInMARBL)
 
-              ecosys_diag_graze_zoo_doc(iLevel,iCell) = c_init*ecosys_diag_graze_zoo_doc(iLevel,iCell) &
+              ecosys_diag_graze_zoo_doc(iLevel,iCell) = c_init*ecosys_diag_graze_zoo_doc(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_graze_zoo_doc_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_graze_zoo_doc_allocatedInMARBL)
 
-              ecosys_diag_graze_zoo_zoo(iLevel,iCell) = c_init*ecosys_diag_graze_zoo_zoo(iLevel,iCell) &
+              ecosys_diag_graze_zoo_zoo(iLevel,iCell) = c_init*ecosys_diag_graze_zoo_zoo(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_graze_zoo_zoo_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_graze_zoo_zoo_allocatedInMARBL)
 
-              ecosys_diag_x_graze_zoo(iLevel,iCell) = c_init*ecosys_diag_x_graze_zoo(iLevel,iCell) &
+              ecosys_diag_x_graze_zoo(iLevel,iCell) = c_init*ecosys_diag_x_graze_zoo(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_x_graze_zoo_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_x_graze_zoo_allocatedInMARBL)
 
-              ecosys_diag_photoC_TOT(iLevel,iCell) = c_init*ecosys_diag_photoC_TOT(iLevel,iCell) &
+              ecosys_diag_photoC_TOT(iLevel,iCell) = c_init*ecosys_diag_photoC_TOT(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_photoC_TOT_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_photoC_TOT_allocatedInMARBL)
 
-              ecosys_diag_photoC_NO3_TOT(iLevel,iCell) = c_init*ecosys_diag_photoC_NO3_TOT(iLevel,iCell) &
+              ecosys_diag_photoC_NO3_TOT(iLevel,iCell) = c_init*ecosys_diag_photoC_NO3_TOT(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_photoC_NO3_TOT_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_photoC_NO3_TOT_allocatedInMARBL)
 
-              ecosys_diag_NITRIF(iLevel,iCell) = c_init*ecosys_diag_NITRIF(iLevel,iCell) &
+              ecosys_diag_NITRIF(iLevel,iCell) = c_init*ecosys_diag_NITRIF(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_NITRIF_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_NITRIF_allocatedInMARBL)
 
-              ecosys_diag_DENITRIF(iLevel,iCell) = c_init*ecosys_diag_DENITRIF(iLevel,iCell) &
+              ecosys_diag_DENITRIF(iLevel,iCell) = c_init*ecosys_diag_DENITRIF(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_DENITRIF_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_DENITRIF_allocatedInMARBL)
 
-              ecosys_diag_tot_Nfix(iLevel,iCell) = c_init*ecosys_diag_tot_Nfix(iLevel,iCell) &
+              ecosys_diag_tot_Nfix(iLevel,iCell) = c_init*ecosys_diag_tot_Nfix(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_tot_Nfix_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_tot_Nfix_allocatedInMARBL)
@@ -1203,156 +1193,156 @@ contains
             !
             if (config_ecosysTracers_diagnostic_fields_level2) then
 
-              ecosys_diag_O2_PRODUCTION(iLevel,iCell) = c_init*ecosys_diag_O2_PRODUCTION(iLevel,iCell) &
+              ecosys_diag_O2_PRODUCTION(iLevel,iCell) = c_init*ecosys_diag_O2_PRODUCTION(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_O2_PRODUCTION_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_O2_PRODUCTION_allocatedInMARBL)
 
-              ecosys_diag_O2_CONSUMPTION(iLevel,iCell) = c_init*ecosys_diag_O2_CONSUMPTION(iLevel,iCell) &
+              ecosys_diag_O2_CONSUMPTION(iLevel,iCell) = c_init*ecosys_diag_O2_CONSUMPTION(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_O2_CONSUMPTION_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_O2_CONSUMPTION_allocatedInMARBL)
 
-              ecosys_diag_AOU(iLevel,iCell) = c_init*ecosys_diag_AOU(iLevel,iCell) &
+              ecosys_diag_AOU(iLevel,iCell) = c_init*ecosys_diag_AOU(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_AOU_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_AOU_allocatedInMARBL)
 
-              ecosys_diag_pH_3D(iLevel,iCell) = c_init*ecosys_diag_pH_3D(iLevel,iCell) &
+              ecosys_diag_pH_3D(iLevel,iCell) = c_init*ecosys_diag_pH_3D(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_pH_3D_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_pH_3D_allocatedInMARBL)
 
-              ecosys_diag_POC_PROD(iLevel,iCell) = c_init*ecosys_diag_POC_PROD(iLevel,iCell) &
+              ecosys_diag_POC_PROD(iLevel,iCell) = c_init*ecosys_diag_POC_PROD(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_POC_PROD_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_POC_PROD_allocatedInMARBL)
 
-              ecosys_diag_POC_REMIN_DOCr(iLevel,iCell) = c_init*ecosys_diag_POC_REMIN_DOCr(iLevel,iCell) &
+              ecosys_diag_POC_REMIN_DOCr(iLevel,iCell) = c_init*ecosys_diag_POC_REMIN_DOCr(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_POC_REMIN_DOCr_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_POC_REMIN_DOCr_allocatedInMARBL)
 
-              ecosys_diag_POC_REMIN_DIC(iLevel,iCell) = c_init*ecosys_diag_POC_REMIN_DIC(iLevel,iCell) &
+              ecosys_diag_POC_REMIN_DIC(iLevel,iCell) = c_init*ecosys_diag_POC_REMIN_DIC(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_POC_REMIN_DIC_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_POC_REMIN_DIC_allocatedInMARBL)
 
-              ecosys_diag_POP_FLUX_IN(iLevel,iCell) = c_init*ecosys_diag_POP_FLUX_IN(iLevel,iCell) &
+              ecosys_diag_POP_FLUX_IN(iLevel,iCell) = c_init*ecosys_diag_POP_FLUX_IN(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_POP_FLUX_IN_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_POP_FLUX_IN_allocatedInMARBL)
 
-              ecosys_diag_POP_PROD(iLevel,iCell) = c_init*ecosys_diag_POP_PROD(iLevel,iCell) &
+              ecosys_diag_POP_PROD(iLevel,iCell) = c_init*ecosys_diag_POP_PROD(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_POP_PROD_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_POP_PROD_allocatedInMARBL)
 
-              ecosys_diag_POP_REMIN_DOPr(iLevel,iCell) = c_init*ecosys_diag_POP_REMIN_DOPr(iLevel,iCell) &
+              ecosys_diag_POP_REMIN_DOPr(iLevel,iCell) = c_init*ecosys_diag_POP_REMIN_DOPr(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_POP_REMIN_DOPr_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_POP_REMIN_DOPr_allocatedInMARBL)
 
-              ecosys_diag_POP_REMIN_PO4(iLevel,iCell) = c_init*ecosys_diag_POP_REMIN_PO4(iLevel,iCell) &
+              ecosys_diag_POP_REMIN_PO4(iLevel,iCell) = c_init*ecosys_diag_POP_REMIN_PO4(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_POP_REMIN_PO4_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_POP_REMIN_PO4_allocatedInMARBL)
 
-              ecosys_diag_PON_REMIN_DONr(iLevel,iCell) = c_init*ecosys_diag_PON_REMIN_DONr(iLevel,iCell) &
+              ecosys_diag_PON_REMIN_DONr(iLevel,iCell) = c_init*ecosys_diag_PON_REMIN_DONr(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_PON_REMIN_DONr_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_PON_REMIN_DONr_allocatedInMARBL)
 
-              ecosys_diag_PON_REMIN_NH4(iLevel,iCell) = c_init*ecosys_diag_PON_REMIN_NH4(iLevel,iCell) &
+              ecosys_diag_PON_REMIN_NH4(iLevel,iCell) = c_init*ecosys_diag_PON_REMIN_NH4(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_PON_REMIN_NH4_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_PON_REMIN_NH4_allocatedInMARBL)
 
               do autotroph = 1, autotroph_cnt
 
-                ecosys_diag_Qp(autotroph,iLevel,iCell) = c_init*ecosys_diag_Qp(autotroph,iLevel,iCell) &
+                ecosys_diag_Qp(autotroph,iLevel,iCell) = c_init*ecosys_diag_Qp(autotroph,iLevel,iCell) + &
                   c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                   diags(ecosys_diag_Qp_indexInMARBL(autotroph))%field_3d(iLevel,column),  &
                   ecosysMissingValue, ecosys_diag_Qp_allocatedInMARBL(autotroph))
 
-                ecosys_diag_photoC(autotroph,iLevel,iCell) = c_init*ecosys_diag_photoC(autotroph,iLevel,iCell) &
+                ecosys_diag_photoC(autotroph,iLevel,iCell) = c_init*ecosys_diag_photoC(autotroph,iLevel,iCell) + &
                   c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                   diags(ecosys_diag_photoC_indexInMARBL(autotroph))%field_3d(iLevel,column),  &
                   ecosysMissingValue, ecosys_diag_photoC_allocatedInMARBL(autotroph))
 
-                ecosys_diag_photoC_NO3(autotroph,iLevel,iCell) = c_init*ecosys_diag_photoC_NO3(autotroph,iLevel,iCell) &
+                ecosys_diag_photoC_NO3(autotroph,iLevel,iCell) = c_init*ecosys_diag_photoC_NO3(autotroph,iLevel,iCell) + &
                   c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                   diags(ecosys_diag_photoC_NO3_indexInMARBL(autotroph))%field_3d(iLevel,column),  &
                   ecosysMissingValue, ecosys_diag_photoC_NO3_allocatedInMARBL(autotroph))
 
-                ecosys_diag_photoFe(autotroph,iLevel,iCell) = c_init*ecosys_diag_photoFe(autotroph,iLevel,iCell) &
+                ecosys_diag_photoFe(autotroph,iLevel,iCell) = c_init*ecosys_diag_photoFe(autotroph,iLevel,iCell) + &
                   c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                   diags(ecosys_diag_photoFe_indexInMARBL(autotroph))%field_3d(iLevel,column),  &
                   ecosysMissingValue, ecosys_diag_photoFe_allocatedInMARBL(autotroph))
 
-                ecosys_diag_photoNO3(autotroph,iLevel,iCell) = c_init*ecosys_diag_photoNO3(autotroph,iLevel,iCell) &
+                ecosys_diag_photoNO3(autotroph,iLevel,iCell) = c_init*ecosys_diag_photoNO3(autotroph,iLevel,iCell) + &
                   c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                   diags(ecosys_diag_photoNO3_indexInMARBL(autotroph))%field_3d(iLevel,column),  &
                   ecosysMissingValue, ecosys_diag_photoNO3_allocatedInMARBL(autotroph))
 
-                ecosys_diag_photoNH4(autotroph,iLevel,iCell) = c_init*ecosys_diag_photoNH4(autotroph,iLevel,iCell) &
+                ecosys_diag_photoNH4(autotroph,iLevel,iCell) = c_init*ecosys_diag_photoNH4(autotroph,iLevel,iCell) + &
                   c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                   diags(ecosys_diag_photoNH4_indexInMARBL(autotroph))%field_3d(iLevel,column),  &
                   ecosysMissingValue, ecosys_diag_photoNH4_allocatedInMARBL(autotroph))
 
-                ecosys_diag_DOP_uptake(autotroph,iLevel,iCell) = c_init*ecosys_diag_DOP_uptake(autotroph,iLevel,iCell) &
+                ecosys_diag_DOP_uptake(autotroph,iLevel,iCell) = c_init*ecosys_diag_DOP_uptake(autotroph,iLevel,iCell) + &
                   c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                   diags(ecosys_diag_DOP_uptake_indexInMARBL(autotroph))%field_3d(iLevel,column),  &
                   ecosysMissingValue, ecosys_diag_DOP_uptake_allocatedInMARBL(autotroph))
 
-                ecosys_diag_PO4_uptake(autotroph,iLevel,iCell) = c_init*ecosys_diag_PO4_uptake(autotroph,iLevel,iCell) &
+                ecosys_diag_PO4_uptake(autotroph,iLevel,iCell) = c_init*ecosys_diag_PO4_uptake(autotroph,iLevel,iCell) + &
                   c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                   diags(ecosys_diag_PO4_uptake_indexInMARBL(autotroph))%field_3d(iLevel,column),  &
                   ecosysMissingValue, ecosys_diag_PO4_uptake_allocatedInMARBL(autotroph))
 
-                ecosys_diag_auto_graze(autotroph,iLevel,iCell) = c_init*ecosys_diag_auto_graze(autotroph,iLevel,iCell) &
+                ecosys_diag_auto_graze(autotroph,iLevel,iCell) = c_init*ecosys_diag_auto_graze(autotroph,iLevel,iCell) + &
                   c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                   diags(ecosys_diag_auto_graze_indexInMARBL(autotroph))%field_3d(iLevel,column),  &
                   ecosysMissingValue, ecosys_diag_auto_graze_allocatedInMARBL(autotroph))
 
-                ecosys_diag_auto_graze_poc(autotroph,iLevel,iCell) = c_init*ecosys_diag_auto_graze_poc(autotroph,iLevel,iCell) &
+                ecosys_diag_auto_graze_poc(autotroph,iLevel,iCell) = c_init*ecosys_diag_auto_graze_poc(autotroph,iLevel,iCell) + &
                   c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                   diags(ecosys_diag_auto_graze_poc_indexInMARBL(autotroph))%field_3d(iLevel,column),  &
                   ecosysMissingValue, ecosys_diag_auto_graze_poc_allocatedInMARBL(autotroph))
 
-                ecosys_diag_auto_graze_doc(autotroph,iLevel,iCell) = c_init*ecosys_diag_auto_graze_doc(autotroph,iLevel,iCell) &
+                ecosys_diag_auto_graze_doc(autotroph,iLevel,iCell) = c_init*ecosys_diag_auto_graze_doc(autotroph,iLevel,iCell) + &
                   c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                   diags(ecosys_diag_auto_graze_doc_indexInMARBL(autotroph))%field_3d(iLevel,column),  &
                   ecosysMissingValue, ecosys_diag_auto_graze_doc_allocatedInMARBL(autotroph))
 
-                ecosys_diag_auto_graze_zoo(autotroph,iLevel,iCell) = c_init*ecosys_diag_auto_graze_zoo(autotroph,iLevel,iCell) &
+                ecosys_diag_auto_graze_zoo(autotroph,iLevel,iCell) = c_init*ecosys_diag_auto_graze_zoo(autotroph,iLevel,iCell) + &
                   c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                   diags(ecosys_diag_auto_graze_zoo_indexInMARBL(autotroph))%field_3d(iLevel,column),  &
                   ecosysMissingValue, ecosys_diag_auto_graze_zoo_allocatedInMARBL(autotroph))
 
-                ecosys_diag_auto_loss(autotroph,iLevel,iCell) = c_init*ecosys_diag_auto_loss(autotroph,iLevel,iCell) &
+                ecosys_diag_auto_loss(autotroph,iLevel,iCell) = c_init*ecosys_diag_auto_loss(autotroph,iLevel,iCell) + &
                   c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                   diags(ecosys_diag_auto_loss_indexInMARBL(autotroph))%field_3d(iLevel,column),  &
                   ecosysMissingValue, ecosys_diag_auto_loss_allocatedInMARBL(autotroph))
 
-                ecosys_diag_auto_loss_poc(autotroph,iLevel,iCell) = c_init*ecosys_diag_auto_loss_poc(autotroph,iLevel,iCell) &
+                ecosys_diag_auto_loss_poc(autotroph,iLevel,iCell) = c_init*ecosys_diag_auto_loss_poc(autotroph,iLevel,iCell) + &
                   c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                   diags(ecosys_diag_auto_loss_poc_indexInMARBL(autotroph))%field_3d(iLevel,column),  &
                   ecosysMissingValue, ecosys_diag_auto_loss_poc_allocatedInMARBL(autotroph))
 
-                ecosys_diag_auto_loss_doc(autotroph,iLevel,iCell) = c_init*ecosys_diag_auto_loss_doc(autotroph,iLevel,iCell) &
+                ecosys_diag_auto_loss_doc(autotroph,iLevel,iCell) = c_init*ecosys_diag_auto_loss_doc(autotroph,iLevel,iCell) + &
                   c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                   diags(ecosys_diag_auto_loss_doc_indexInMARBL(autotroph))%field_3d(iLevel,column),  &
                   ecosysMissingValue, ecosys_diag_auto_loss_doc_allocatedInMARBL(autotroph))
 
-                ecosys_diag_auto_agg(autotroph,iLevel,iCell) = c_init*ecosys_diag_auto_agg(autotroph,iLevel,iCell) &
+                ecosys_diag_auto_agg(autotroph,iLevel,iCell) = c_init*ecosys_diag_auto_agg(autotroph,iLevel,iCell) + &
                   c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                   diags(ecosys_diag_auto_agg_indexInMARBL(autotroph))%field_3d(iLevel,column),  &
                   ecosysMissingValue, ecosys_diag_auto_agg_allocatedInMARBL(autotroph))
 
 ! Nfix only defined for N-fixers
                 if (ecosys_diag_Nfix_indexInMARBL(autotroph) > 0) then
-                ecosys_diag_Nfix(autotroph,iLevel,iCell) = c_init*ecosys_diag_Nfix(autotroph,iLevel,iCell) &
+                ecosys_diag_Nfix(autotroph,iLevel,iCell) = c_init*ecosys_diag_Nfix(autotroph,iLevel,iCell) + &
                   c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                   diags(ecosys_diag_Nfix_indexInMARBL(autotroph))%field_3d(iLevel,column),  &
                   ecosysMissingValue, ecosys_diag_Nfix_allocatedInMARBL(autotroph))
@@ -1368,132 +1358,132 @@ contains
 
             if (config_ecosysTracers_diagnostic_fields_level3) then
 
-              ecosys_diag_SiO2_FLUX_IN(iLevel,iCell) = c_init*ecosys_diag_SiO2_FLUX_IN(iLevel,iCell) &
+              ecosys_diag_SiO2_FLUX_IN(iLevel,iCell) = c_init*ecosys_diag_SiO2_FLUX_IN(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_SiO2_FLUX_IN_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_SiO2_FLUX_IN_allocatedInMARBL)
 
-              ecosys_diag_SiO2_PROD(iLevel,iCell) = c_init*ecosys_diag_SiO2_PROD(iLevel,iCell) &
+              ecosys_diag_SiO2_PROD(iLevel,iCell) = c_init*ecosys_diag_SiO2_PROD(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_SiO2_PROD_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_SiO2_PROD_allocatedInMARBL)
 
-              ecosys_diag_SiO2_REMIN(iLevel,iCell) = c_init*ecosys_diag_SiO2_REMIN(iLevel,iCell) &
+              ecosys_diag_SiO2_REMIN(iLevel,iCell) = c_init*ecosys_diag_SiO2_REMIN(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_SiO2_REMIN_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_SiO2_REMIN_allocatedInMARBL)
 
-              ecosys_diag_dust_FLUX_IN(iLevel,iCell) = c_init*ecosys_diag_dust_FLUX_IN(iLevel,iCell) &
+              ecosys_diag_dust_FLUX_IN(iLevel,iCell) = c_init*ecosys_diag_dust_FLUX_IN(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_dust_FLUX_IN_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_dust_FLUX_IN_allocatedInMARBL)
 
-              ecosys_diag_dust_REMIN(iLevel,iCell) = c_init*ecosys_diag_dust_REMIN(iLevel,iCell) &
+              ecosys_diag_dust_REMIN(iLevel,iCell) = c_init*ecosys_diag_dust_REMIN(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_dust_REMIN_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_dust_REMIN_allocatedInMARBL)
 
-              ecosys_diag_P_iron_FLUX_IN(iLevel,iCell) = c_init*ecosys_diag_P_iron_FLUX_IN(iLevel,iCell) &
+              ecosys_diag_P_iron_FLUX_IN(iLevel,iCell) = c_init*ecosys_diag_P_iron_FLUX_IN(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_P_iron_FLUX_IN_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_P_iron_FLUX_IN_allocatedInMARBL)
 
-              ecosys_diag_P_iron_PROD(iLevel,iCell) = c_init*ecosys_diag_P_iron_PROD(iLevel,iCell) &
+              ecosys_diag_P_iron_PROD(iLevel,iCell) = c_init*ecosys_diag_P_iron_PROD(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_P_iron_PROD_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_P_iron_PROD_allocatedInMARBL)
 
-              ecosys_diag_P_iron_REMIN(iLevel,iCell) = c_init*ecosys_diag_P_iron_REMIN(iLevel,iCell) &
+              ecosys_diag_P_iron_REMIN(iLevel,iCell) = c_init*ecosys_diag_P_iron_REMIN(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_P_iron_REMIN_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_P_iron_REMIN_allocatedInMARBL)
 
-              ecosys_diag_DOC_prod(iLevel,iCell) = c_init*ecosys_diag_DOC_prod(iLevel,iCell) &
+              ecosys_diag_DOC_prod(iLevel,iCell) = c_init*ecosys_diag_DOC_prod(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_DOC_prod_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_DOC_prod_allocatedInMARBL)
 
-              ecosys_diag_DOC_remin(iLevel,iCell) = c_init*ecosys_diag_DOC_remin(iLevel,iCell) &
+              ecosys_diag_DOC_remin(iLevel,iCell) = c_init*ecosys_diag_DOC_remin(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_DOC_remin_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_DOC_remin_allocatedInMARBL)
 
-              ecosys_diag_DOCr_remin(iLevel,iCell) = c_init*ecosys_diag_DOCr_remin(iLevel,iCell) &
+              ecosys_diag_DOCr_remin(iLevel,iCell) = c_init*ecosys_diag_DOCr_remin(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_DOCr_remin_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_DOCr_remin_allocatedInMARBL)
 
-              ecosys_diag_DON_prod(iLevel,iCell) = c_init*ecosys_diag_DON_prod(iLevel,iCell) &
+              ecosys_diag_DON_prod(iLevel,iCell) = c_init*ecosys_diag_DON_prod(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_DON_prod_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_DON_prod_allocatedInMARBL)
 
-              ecosys_diag_DON_remin(iLevel,iCell) = c_init*ecosys_diag_DON_remin(iLevel,iCell) &
+              ecosys_diag_DON_remin(iLevel,iCell) = c_init*ecosys_diag_DON_remin(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_DON_remin_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_DON_remin_allocatedInMARBL)
 
-              ecosys_diag_DONr_remin(iLevel,iCell) = c_init*ecosys_diag_DONr_remin(iLevel,iCell) &
+              ecosys_diag_DONr_remin(iLevel,iCell) = c_init*ecosys_diag_DONr_remin(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_DONr_remin_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_DONr_remin_allocatedInMARBL)
 
-              ecosys_diag_DOP_prod(iLevel,iCell) = c_init*ecosys_diag_DOP_prod(iLevel,iCell) &
+              ecosys_diag_DOP_prod(iLevel,iCell) = c_init*ecosys_diag_DOP_prod(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_DOP_prod_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_DOP_prod_allocatedInMARBL)
 
-              ecosys_diag_DOP_remin(iLevel,iCell) = c_init*ecosys_diag_DOP_remin(iLevel,iCell) &
+              ecosys_diag_DOP_remin(iLevel,iCell) = c_init*ecosys_diag_DOP_remin(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_DOP_remin_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_DOP_remin_allocatedInMARBL)
 
-              ecosys_diag_DOPr_remin(iLevel,iCell) = c_init*ecosys_diag_DOPr_remin(iLevel,iCell) &
+              ecosys_diag_DOPr_remin(iLevel,iCell) = c_init*ecosys_diag_DOPr_remin(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_DOPr_remin_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_DOPr_remin_allocatedInMARBL)
 
-              ecosys_diag_Fe_scavenge(iLevel,iCell) = c_init*ecosys_diag_Fe_scavenge(iLevel,iCell) &
+              ecosys_diag_Fe_scavenge(iLevel,iCell) = c_init*ecosys_diag_Fe_scavenge(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_Fe_scavenge_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_Fe_scavenge_allocatedInMARBL)
 
-              ecosys_diag_Fe_scavenge_rate(iLevel,iCell) = c_init*ecosys_diag_Fe_scavenge_rate(iLevel,iCell) &
+              ecosys_diag_Fe_scavenge_rate(iLevel,iCell) = c_init*ecosys_diag_Fe_scavenge_rate(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_Fe_scavenge_rate_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_Fe_scavenge_rate_allocatedInMARBL)
 
-              ecosys_diag_Lig_prod(iLevel,iCell) = c_init*ecosys_diag_Lig_prod(iLevel,iCell) &
+              ecosys_diag_Lig_prod(iLevel,iCell) = c_init*ecosys_diag_Lig_prod(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_Lig_prod_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_Lig_prod_allocatedInMARBL)
 
-              ecosys_diag_Lig_loss(iLevel,iCell) = c_init*ecosys_diag_Lig_loss(iLevel,iCell) &
+              ecosys_diag_Lig_loss(iLevel,iCell) = c_init*ecosys_diag_Lig_loss(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_Lig_loss_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_Lig_loss_allocatedInMARBL)
 
-              ecosys_diag_Lig_scavenge(iLevel,iCell) = c_init*ecosys_diag_Lig_scavenge(iLevel,iCell) &
+              ecosys_diag_Lig_scavenge(iLevel,iCell) = c_init*ecosys_diag_Lig_scavenge(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_Lig_scavenge_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_Lig_scavenge_allocatedInMARBL)
 
-              ecosys_diag_Fefree(iLevel,iCell) = c_init*ecosys_diag_Fefree(iLevel,iCell) &
+              ecosys_diag_Fefree(iLevel,iCell) = c_init*ecosys_diag_Fefree(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_Fefree_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_Fefree_allocatedInMARBL)
 
-              ecosys_diag_Lig_photochem(iLevel,iCell) = c_init*ecosys_diag_Lig_photochem(iLevel,iCell) &
+              ecosys_diag_Lig_photochem(iLevel,iCell) = c_init*ecosys_diag_Lig_photochem(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_Lig_photochem_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_Lig_photochem_allocatedInMARBL)
 
-              ecosys_diag_Lig_deg(iLevel,iCell) = c_init*ecosys_diag_Lig_deg(iLevel,iCell) &
+              ecosys_diag_Lig_deg(iLevel,iCell) = c_init*ecosys_diag_Lig_deg(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_Lig_deg_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_Lig_deg_allocatedInMARBL)
 
-              ecosys_diag_tot_bSi_form(iLevel,iCell) = c_init*ecosys_diag_tot_bSi_form(iLevel,iCell) &
+              ecosys_diag_tot_bSi_form(iLevel,iCell) = c_init*ecosys_diag_tot_bSi_form(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_tot_bSi_form_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_tot_bSi_form_allocatedInMARBL)
@@ -1501,7 +1491,7 @@ contains
               do autotroph = 1, autotroph_cnt
 ! bSi_form only defined for silicifiers
                 if (ecosys_diag_bSi_form_indexInMARBL(autotroph) > 0) then
-                ecosys_diag_bSi_form(autotroph,iLevel,iCell) = c_init*ecosys_diag_bSi_form(autotroph,iLevel,iCell) &
+                ecosys_diag_bSi_form(autotroph,iLevel,iCell) = c_init*ecosys_diag_bSi_form(autotroph,iLevel,iCell) + &
                   c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                   diags(ecosys_diag_bSi_form_indexInMARBL(autotroph))%field_3d(iLevel,column),  &
                   ecosysMissingValue, ecosys_diag_bSi_form_allocatedInMARBL(autotroph))
@@ -1515,72 +1505,72 @@ contains
             !
             if (config_ecosysTracers_diagnostic_fields_level4) then
 
-              ecosys_diag_CaCO3_PROD(iLevel,iCell) = c_init*ecosys_diag_CaCO3_PROD(iLevel,iCell) &
+              ecosys_diag_CaCO3_PROD(iLevel,iCell) = c_init*ecosys_diag_CaCO3_PROD(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_CaCO3_PROD_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_CaCO3_PROD_allocatedInMARBL)
 
-              ecosys_diag_CaCO3_REMIN(iLevel,iCell) = c_init*ecosys_diag_CaCO3_REMIN(iLevel,iCell) &
+              ecosys_diag_CaCO3_REMIN(iLevel,iCell) = c_init*ecosys_diag_CaCO3_REMIN(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_CaCO3_REMIN_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_CaCO3_REMIN_allocatedInMARBL)
 
-              ecosys_diag_CaCO3_ALT_CO2_PROD(iLevel,iCell) = c_init*ecosys_diag_CaCO3_ALT_CO2_PROD(iLevel,iCell) &
+              ecosys_diag_CaCO3_ALT_CO2_PROD(iLevel,iCell) = c_init*ecosys_diag_CaCO3_ALT_CO2_PROD(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_CaCO3_ALT_CO2_PROD_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_CaCO3_ALT_CO2_PROD_allocatedInMARBL)
 
-              ecosys_diag_CaCO3_ALT_CO2_REMIN(iLevel,iCell) = c_init*ecosys_diag_CaCO3_ALT_CO2_REMIN(iLevel,iCell) &
+              ecosys_diag_CaCO3_ALT_CO2_REMIN(iLevel,iCell) = c_init*ecosys_diag_CaCO3_ALT_CO2_REMIN(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_CaCO3_ALT_CO2_REMIN_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_CaCO3_ALT_CO2_REMIN_allocatedInMARBL)
 
-              ecosys_diag_tot_CaCO3_form(iLevel,iCell) = c_init*ecosys_diag_tot_CaCO3_form(iLevel,iCell) &
+              ecosys_diag_tot_CaCO3_form(iLevel,iCell) = c_init*ecosys_diag_tot_CaCO3_form(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_tot_CaCO3_form_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_tot_CaCO3_form_allocatedInMARBL)
 
-              ecosys_diag_CO3(iLevel,iCell) = c_init*ecosys_diag_CO3(iLevel,iCell) &
+              ecosys_diag_CO3(iLevel,iCell) = c_init*ecosys_diag_CO3(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_CO3_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_CO3_allocatedInMARBL)
 
-              ecosys_diag_HCO3(iLevel,iCell) = c_init*ecosys_diag_HCO3(iLevel,iCell) &
+              ecosys_diag_HCO3(iLevel,iCell) = c_init*ecosys_diag_HCO3(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_HCO3_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_HCO3_allocatedInMARBL)
 
-              ecosys_diag_H2CO3(iLevel,iCell) = c_init*ecosys_diag_H2CO3(iLevel,iCell) &
+              ecosys_diag_H2CO3(iLevel,iCell) = c_init*ecosys_diag_H2CO3(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_H2CO3_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_H2CO3_allocatedInMARBL)
 
-              ecosys_diag_CO3_ALT_CO2(iLevel,iCell) = c_init*ecosys_diag_CO3_ALT_CO2(iLevel,iCell) &
+              ecosys_diag_CO3_ALT_CO2(iLevel,iCell) = c_init*ecosys_diag_CO3_ALT_CO2(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_CO3_ALT_CO2_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_CO3_ALT_CO2_allocatedInMARBL)
 
-              ecosys_diag_HCO3_ALT_CO2(iLevel,iCell) = c_init*ecosys_diag_HCO3_ALT_CO2(iLevel,iCell) &
+              ecosys_diag_HCO3_ALT_CO2(iLevel,iCell) = c_init*ecosys_diag_HCO3_ALT_CO2(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_HCO3_ALT_CO2_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_HCO3_ALT_CO2_allocatedInMARBL)
 
-              ecosys_diag_H2CO3_ALT_CO2(iLevel,iCell) = c_init*ecosys_diag_H2CO3_ALT_CO2(iLevel,iCell) &
+              ecosys_diag_H2CO3_ALT_CO2(iLevel,iCell) = c_init*ecosys_diag_H2CO3_ALT_CO2(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_H2CO3_ALT_CO2_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_H2CO3_ALT_CO2_allocatedInMARBL)
 
-              ecosys_diag_pH_3D_ALT_CO2(iLevel,iCell) = c_init*ecosys_diag_pH_3D_ALT_CO2(iLevel,iCell) &
+              ecosys_diag_pH_3D_ALT_CO2(iLevel,iCell) = c_init*ecosys_diag_pH_3D_ALT_CO2(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_pH_3D_ALT_CO2_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_pH_3D_ALT_CO2_allocatedInMARBL)
 
-              ecosys_diag_co3_sat_calc(iLevel,iCell) = c_init*ecosys_diag_co3_sat_calc(iLevel,iCell) &
+              ecosys_diag_co3_sat_calc(iLevel,iCell) = c_init*ecosys_diag_co3_sat_calc(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_co3_sat_calc_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_co3_sat_calc_allocatedInMARBL)
 
-              ecosys_diag_co3_sat_arag(iLevel,iCell) = c_init*ecosys_diag_co3_sat_arag(iLevel,iCell) &
+              ecosys_diag_co3_sat_arag(iLevel,iCell) = c_init*ecosys_diag_co3_sat_arag(iLevel,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_co3_sat_arag_indexInMARBL)%field_3d(iLevel,column),  &
                 ecosysMissingValue, ecosys_diag_co3_sat_arag_allocatedInMARBL)
@@ -1588,7 +1578,7 @@ contains
               do autotroph = 1, autotroph_cnt
 ! CaCO3_form only defined for calcifiers
                 if (ecosys_diag_CaCO3_form_indexInMARBL(autotroph) > 0) then
-                ecosys_diag_CaCO3_form(autotroph,iLevel,iCell) = c_init*ecosys_diag_CaCO3_form(autotroph,iLevel,iCell) &
+                ecosys_diag_CaCO3_form(autotroph,iLevel,iCell) = c_init*ecosys_diag_CaCO3_form(autotroph,iLevel,iCell) + &
                   c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                   diags(ecosys_diag_CaCO3_form_indexInMARBL(autotroph))%field_3d(iLevel,column),  &
                   ecosysMissingValue, ecosys_diag_CaCO3_form_allocatedInMARBL(autotroph))
@@ -1605,17 +1595,17 @@ contains
 
 ! nutrient restoring is currently not implemented
 
-!             ecosys_diag_PO4_RESTORE(iLevel,iCell) = c_init*ecosys_diag_PO4_RESTORE(iLevel,iCell) &
+!             ecosys_diag_PO4_RESTORE(iLevel,iCell) = c_init*ecosys_diag_PO4_RESTORE(iLevel,iCell) + &
 !                c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
 !               diags(ecosys_diag_PO4_RESTORE_indexInMARBL)%field_3d(iLevel,column),  &
 !               ecosysMissingValue, ecosys_diag_PO4_RESTORE_allocatedInMARBL)
 
-!             ecosys_diag_NO3_RESTORE(iLevel,iCell) = c_init*ecosys_diag_NO3_RESTORE(iLevel,iCell) &
+!             ecosys_diag_NO3_RESTORE(iLevel,iCell) = c_init*ecosys_diag_NO3_RESTORE(iLevel,iCell) + &
 !               c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
 !               diags(ecosys_diag_NO3_RESTORE_indexInMARBL)%field_3d(iLevel,column),  &
 !               ecosysMissingValue, ecosys_diag_NO3_RESTORE_allocatedInMARBL)
 
-!             ecosys_diag_SiO3_RESTORE(iLevel,iCell) = c_init*ecosys_diag_SiO3_RESTORE(iLevel,iCell) &
+!             ecosys_diag_SiO3_RESTORE(iLevel,iCell) = c_init*ecosys_diag_SiO3_RESTORE(iLevel,iCell) + &
 !               c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
 !               diags(ecosys_diag_SiO3_RESTORE_indexInMARBL)%field_3d(iLevel,column),  &
 !               ecosysMissingValue, ecosys_diag_SiO3_RESTORE_allocatedInMARBL)
@@ -1629,79 +1619,79 @@ contains
          !
          if (config_ecosysTracers_diagnostic_fields_level1) then
 
-           ecosys_diag_photoC_TOT_zint(iCell) = c_init*ecosys_diag_photoC_TOT_zint(iCell) &
+           ecosys_diag_photoC_TOT_zint(iCell) = c_init*ecosys_diag_photoC_TOT_zint(iCell) + &
              c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
              diags(ecosys_diag_photoC_TOT_zint_indexInMARBL)%field_2d(column)*convertLengthCGStoMKS,  &
              ecosysMissingValue, ecosys_diag_photoC_TOT_zint_allocatedInMARBL)
 
-           ecosys_diag_photoC_NO3_TOT_zint(iCell) = c_init*ecosys_diag_photoC_NO3_TOT_zint(iCell) &
+           ecosys_diag_photoC_NO3_TOT_zint(iCell) = c_init*ecosys_diag_photoC_NO3_TOT_zint(iCell) + &
              c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
              diags(ecosys_diag_photoC_NO3_TOT_zint_indexInMARBL)%field_2d(column)*convertLengthCGStoMKS,  &
              ecosysMissingValue, ecosys_diag_photoC_NO3_TOT_zint_allocatedInMARBL)
 
-           ecosys_diag_O2_ZMIN(iCell) = c_init*ecosys_diag_O2_ZMIN(iCell) &
+           ecosys_diag_O2_ZMIN(iCell) = c_init*ecosys_diag_O2_ZMIN(iCell) + &
              c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
              diags(ecosys_diag_O2_ZMIN_indexInMARBL)%field_2d(column),  &
              ecosysMissingValue, ecosys_diag_O2_ZMIN_allocatedInMARBL)
 
-           ecosys_diag_O2_ZMIN_DEPTH(iCell) = c_init*ecosys_diag_O2_ZMIN_DEPTH(iCell) &
+           ecosys_diag_O2_ZMIN_DEPTH(iCell) = c_init*ecosys_diag_O2_ZMIN_DEPTH(iCell) + &
              c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
              diags(ecosys_diag_O2_ZMIN_DEPTH_indexInMARBL)%field_2d(column),  &
              ecosysMissingValue, ecosys_diag_O2_ZMIN_DEPTH_allocatedInMARBL)
 
-           ecosys_diag_calcToSed(iCell) = c_init*ecosys_diag_calcToSed(iCell) &
+           ecosys_diag_calcToSed(iCell) = c_init*ecosys_diag_calcToSed(iCell) + &
              c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
              diags(ecosys_diag_calcToSed_indexInMARBL)%field_2d(column),  &
              ecosysMissingValue, ecosys_diag_calcToSed_allocatedInMARBL)
 
-           ecosys_diag_calcToSed_ALT_CO2(iCell) = c_init*ecosys_diag_calcToSed_ALT_CO2(iCell) &
+           ecosys_diag_calcToSed_ALT_CO2(iCell) = c_init*ecosys_diag_calcToSed_ALT_CO2(iCell) + &
              c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
              diags(ecosys_diag_calcToSed_ALT_CO2_indexInMARBL)%field_2d(column),  &
              ecosysMissingValue, ecosys_diag_calcToSed_ALT_CO2_allocatedInMARBL)
 
-           ecosys_diag_pocToSed(iCell) = c_init*ecosys_diag_pocToSed(iCell) &
+           ecosys_diag_pocToSed(iCell) = c_init*ecosys_diag_pocToSed(iCell) + &
              c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
              diags(ecosys_diag_pocToSed_indexInMARBL)%field_2d(column),  &
              ecosysMissingValue, ecosys_diag_pocToSed_allocatedInMARBL)
 
-           ecosys_diag_pfeToSed(iCell) = c_init*ecosys_diag_pfeToSed(iCell) &
+           ecosys_diag_pfeToSed(iCell) = c_init*ecosys_diag_pfeToSed(iCell) + &
              c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
              diags(ecosys_diag_pfeToSed_indexInMARBL)%field_2d(column),  &
              ecosysMissingValue, ecosys_diag_pfeToSed_allocatedInMARBL)
 
-           ecosys_diag_SedDenitrif(iCell) = c_init*ecosys_diag_SedDenitrif(iCell) &
+           ecosys_diag_SedDenitrif(iCell) = c_init*ecosys_diag_SedDenitrif(iCell) + &
              c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
              diags(ecosys_diag_SedDenitrif_indexInMARBL)%field_2d(column),  &
              ecosysMissingValue, ecosys_diag_SedDenitrif_allocatedInMARBL)
 
-           ecosys_diag_Jint_Ctot(iCell) = c_init*ecosys_diag_Jint_Ctot(iCell) &
+           ecosys_diag_Jint_Ctot(iCell) = c_init*ecosys_diag_Jint_Ctot(iCell) + &
              c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
              diags(ecosys_diag_Jint_Ctot_indexInMARBL)%field_2d(column),  &
              ecosysMissingValue, ecosys_diag_Jint_Ctot_allocatedInMARBL)
 
-           ecosys_diag_Jint_Ptot(iCell) = c_init*ecosys_diag_Jint_Ptot(iCell) &
+           ecosys_diag_Jint_Ptot(iCell) = c_init*ecosys_diag_Jint_Ptot(iCell) + &
              c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
              diags(ecosys_diag_Jint_Ptot_indexInMARBL)%field_2d(column),  &
              ecosysMissingValue, ecosys_diag_Jint_Ptot_allocatedInMARBL)
 
-           ecosys_diag_Jint_Sitot(iCell) = c_init*ecosys_diag_Jint_Sitot(iCell) &
+           ecosys_diag_Jint_Sitot(iCell) = c_init*ecosys_diag_Jint_Sitot(iCell) + &
              c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
              diags(ecosys_diag_Jint_Sitot_indexInMARBL)%field_2d(column),  &
              ecosysMissingValue, ecosys_diag_Jint_Sitot_allocatedInMARBL)
 
-           ecosys_diag_Jint_Fetot(iCell) = c_init*ecosys_diag_Jint_Fetot(iCell) &
+           ecosys_diag_Jint_Fetot(iCell) = c_init*ecosys_diag_Jint_Fetot(iCell) + &
              c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
              diags(ecosys_diag_Jint_Fetot_indexInMARBL)%field_2d(column),  &
              ecosysMissingValue, ecosys_diag_Jint_Fetot_allocatedInMARBL)
 
            do autotroph = 1, autotroph_cnt
 
-             ecosys_diag_photoC_zint(autotroph,iCell) = c_init*ecosys_diag_photoC_zint(autotroph,iCell) &
+             ecosys_diag_photoC_zint(autotroph,iCell) = c_init*ecosys_diag_photoC_zint(autotroph,iCell) + &
                c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                diags(ecosys_diag_photoC_zint_indexInMARBL(autotroph))%field_2d(column)*convertLengthCGStoMKS,  &
                ecosysMissingValue, ecosys_diag_photoC_zint_allocatedInMARBL(autotroph))
 
-             ecosys_diag_photoC_NO3_zint(autotroph,iCell) = c_init*ecosys_diag_photoC_NO3_zint(autotroph,iCell) &
+             ecosys_diag_photoC_NO3_zint(autotroph,iCell) = c_init*ecosys_diag_photoC_NO3_zint(autotroph,iCell) + &
                c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                diags(ecosys_diag_photoC_NO3_zint_indexInMARBL(autotroph))%field_2d(column)*convertLengthCGStoMKS,  &
                ecosysMissingValue, ecosys_diag_photoC_NO3_zint_allocatedInMARBL(autotroph))
@@ -1717,28 +1707,28 @@ contains
 
            do autotroph = 1, autotroph_cnt
 
-             ecosys_diag_N_lim_surf(autotroph,iCell) = c_init*ecosys_diag_N_lim_surf(autotroph,iCell) &
+             ecosys_diag_N_lim_surf(autotroph,iCell) = c_init*ecosys_diag_N_lim_surf(autotroph,iCell) + &
                c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                diags(ecosys_diag_N_lim_surf_indexInMARBL(autotroph))%field_2d(column),  &
                ecosysMissingValue, ecosys_diag_N_lim_surf_allocatedInMARBL(autotroph))
 
-             ecosys_diag_P_lim_surf(autotroph,iCell) = c_init*ecosys_diag_P_lim_surf(autotroph,iCell) &
+             ecosys_diag_P_lim_surf(autotroph,iCell) = c_init*ecosys_diag_P_lim_surf(autotroph,iCell) + &
                c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                diags(ecosys_diag_P_lim_surf_indexInMARBL(autotroph))%field_2d(column),  &
                ecosysMissingValue, ecosys_diag_P_lim_surf_allocatedInMARBL(autotroph))
 
-             ecosys_diag_Fe_lim_surf(autotroph,iCell) = c_init*ecosys_diag_Fe_lim_surf(autotroph,iCell) &
+             ecosys_diag_Fe_lim_surf(autotroph,iCell) = c_init*ecosys_diag_Fe_lim_surf(autotroph,iCell) + &
                c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                diags(ecosys_diag_Fe_lim_surf_indexInMARBL(autotroph))%field_2d(column),  &
                ecosysMissingValue, ecosys_diag_Fe_lim_surf_allocatedInMARBL(autotroph))
 
              if(ecosys_diag_SiO3_lim_surf_indexInMARBL(autotroph) > 0)  &
-               ecosys_diag_SiO3_lim_surf(autotroph,iCell) = c_init*ecosys_diag_SiO3_lim_surf(autotroph,iCell) &
+               ecosys_diag_SiO3_lim_surf(autotroph,iCell) = c_init*ecosys_diag_SiO3_lim_surf(autotroph,iCell) + &
                  c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                  diags(ecosys_diag_SiO3_lim_surf_indexInMARBL(autotroph))%field_2d(column),  &
                  ecosysMissingValue, ecosys_diag_SiO3_lim_surf_allocatedInMARBL(autotroph))
 
-             ecosys_diag_light_lim_surf(autotroph,iCell) = c_init*ecosys_diag_light_lim_surf(autotroph,iCell) &
+             ecosys_diag_light_lim_surf(autotroph,iCell) = c_init*ecosys_diag_light_lim_surf(autotroph,iCell) + &
                c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                diags(ecosys_diag_light_lim_surf_indexInMARBL(autotroph))%field_2d(column),  &
                ecosysMissingValue, ecosys_diag_light_lim_surf_allocatedInMARBL(autotroph))
@@ -1751,27 +1741,27 @@ contains
          ! level 3 diagnostics with no depth dependence
          !
          if (config_ecosysTracers_diagnostic_fields_level3) then
-           ecosys_diag_ponToSed(iCell) = c_init*ecosys_diag_ponToSed(iCell) &
+           ecosys_diag_ponToSed(iCell) = c_init*ecosys_diag_ponToSed(iCell) + &
              c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
              diags(ecosys_diag_ponToSed_indexInMARBL)%field_2d(column),  &
              ecosysMissingValue, ecosys_diag_ponToSed_allocatedInMARBL)
 
-           ecosys_diag_popToSed(iCell) = c_init*ecosys_diag_popToSed(iCell) &
+           ecosys_diag_popToSed(iCell) = c_init*ecosys_diag_popToSed(iCell) + &
              c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
              diags(ecosys_diag_popToSed_indexInMARBL)%field_2d(column),  &
              ecosysMissingValue, ecosys_diag_popToSed_allocatedInMARBL)
 
-           ecosys_diag_bsiToSed(iCell) = c_init*ecosys_diag_bsiToSed(iCell) &
+           ecosys_diag_bsiToSed(iCell) = c_init*ecosys_diag_bsiToSed(iCell) + &
              c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
              diags(ecosys_diag_bsiToSed_indexInMARBL)%field_2d(column),  &
              ecosysMissingValue, ecosys_diag_bsiToSed_allocatedInMARBL)
 
-           ecosys_diag_dustToSed(iCell) = c_init*ecosys_diag_dustToSed(iCell) &
+           ecosys_diag_dustToSed(iCell) = c_init*ecosys_diag_dustToSed(iCell) + &
              c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
              diags(ecosys_diag_dustToSed_indexInMARBL)%field_2d(column),  &
              ecosysMissingValue, ecosys_diag_dustToSed_allocatedInMARBL)
 
-           ecosys_diag_OtherRemin(iCell) = c_init*ecosys_diag_OtherRemin(iCell) &
+           ecosys_diag_OtherRemin(iCell) = c_init*ecosys_diag_OtherRemin(iCell) + &
              c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
              diags(ecosys_diag_OtherRemin_indexInMARBL)%field_2d(column),  &
              ecosysMissingValue, ecosys_diag_OtherRemin_allocatedInMARBL)
@@ -1782,17 +1772,17 @@ contains
          !
          if (config_ecosysTracers_diagnostic_fields_level4) then
 
-            ecosys_diag_tot_CaCO3_form_zint(iCell) = c_init*ecosys_diag_tot_CaCO3_form_zint(iCell) &
+            ecosys_diag_tot_CaCO3_form_zint(iCell) = c_init*ecosys_diag_tot_CaCO3_form_zint(iCell) + &
               c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
               diags(ecosys_diag_tot_CaCO3_form_zint_indexInMARBL)%field_2d(column)*convertLengthCGStoMKS,  &
               ecosysMissingValue, ecosys_diag_tot_CaCO3_form_zint_allocatedInMARBL)
 
-            ecosys_diag_zsatcalc(iCell) = c_init*ecosys_diag_zsatcalc(iCell) &
+            ecosys_diag_zsatcalc(iCell) = c_init*ecosys_diag_zsatcalc(iCell) + &
               c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
               diags(ecosys_diag_zsatcalc_indexInMARBL)%field_2d(column),  &
               ecosysMissingValue, ecosys_diag_zsatcalc_allocatedInMARBL)
 
-            ecosys_diag_zsatarag(iCell) = c_init*ecosys_diag_zsatarag(iCell) &
+            ecosys_diag_zsatarag(iCell) = c_init*ecosys_diag_zsatarag(iCell) + &
               c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
               diags(ecosys_diag_zsatarag_indexInMARBL)%field_2d(column),  &
               ecosysMissingValue, ecosys_diag_zsatarag_allocatedInMARBL)
@@ -1800,7 +1790,7 @@ contains
             do autotroph = 1, autotroph_cnt
 ! CaCO3_form_zint only defined for calcifiers
                 if (ecosys_diag_CaCO3_form_zint_indexInMARBL(autotroph) > 0) then
-              ecosys_diag_CaCO3_form_zint(autotroph,iCell) = c_init*ecosys_diag_CaCO3_form_zint(autotroph,iCell) &
+              ecosys_diag_CaCO3_form_zint(autotroph,iCell) = c_init*ecosys_diag_CaCO3_form_zint(autotroph,iCell) + &
                 c_accum*merge(marbl_instances(1)%interior_tendency_diags%  &
                 diags(ecosys_diag_CaCO3_form_zint_indexInMARBL(autotroph))%field_2d(column)*convertLengthCGStoMKS,  &
                 ecosysMissingValue, ecosys_diag_CaCO3_form_zint_allocatedInMARBL(autotroph))
@@ -1809,9 +1799,7 @@ contains
 
          endif  !  config_ecosysTracers_diagnostic_fields_level4
 
-      enddo  !  iCell
-!!!
-      call mpas_timer_stop("ecosys source-sink")
+!      call mpas_timer_stop("ecosys source-sink")
       end subroutine wrap_SourceSink
 
    !--------------------------------------------------------------------
@@ -1905,10 +1893,10 @@ contains
 
         flux( 4,iCell) = flux( 4,iCell) + riverFluxNO3(iCell)*convertLengthMKStoCGS
         flux( 5,iCell) = flux( 5,iCell) + riverFluxPO4(iCell)*convertLengthMKStoCGS
-        flux( 6,iCell) = flux( 6,iCell) + riverFluxDON(iCell) * 0.9_BGC_r8*convertLengthMKStoCGS
-        flux( 7,iCell) = flux( 7,iCell) + riverFluxDON(iCell) * 0.1_BGC_r8*convertLengthMKStoCGS
-        flux( 8,iCell) = flux( 8,iCell) + riverFluxDOP(iCell) * 0.975_BGC_r8*convertLengthMKStoCGS
-        flux( 9,iCell) = flux( 9,iCell) + riverFluxDOP(iCell) * 0.025_BGC_r8*convertLengthMKStoCGS
+        flux( 6,iCell) = flux( 6,iCell) + riverFluxDON(iCell) * 0.9_RKIND*convertLengthMKStoCGS
+        flux( 7,iCell) = flux( 7,iCell) + riverFluxDON(iCell) * 0.1_RKIND*convertLengthMKStoCGS
+        flux( 8,iCell) = flux( 8,iCell) + riverFluxDOP(iCell) * 0.975_RKIND*convertLengthMKStoCGS
+        flux( 9,iCell) = flux( 9,iCell) + riverFluxDOP(iCell) * 0.025_RKIND*convertLengthMKStoCGS
         flux(10,iCell) = flux(10,iCell) + riverFluxSiO3(iCell)*convertLengthMKStoCGS
         flux(11,iCell) = flux(11,iCell) + riverFluxFe(iCell)*convertLengthMKStoCGS / parm_Fe_bioavail
         flux(12,iCell) = flux(12,iCell) + riverFluxDIC(iCell)*convertLengthMKStoCGS
@@ -2224,6 +2212,7 @@ contains
             if (ocn_tracer_supercycle_use()) then
                ecosysSurfaceFlux(ecosysIndexMARBLtoMPASO(n),iCell) = &
                   ecosysSurfaceFlux(ecosysIndexMARBLtoMPASO(n),iCell) / supcyc
+            end if
          end do
 
 ! gas fluxes (co2, o2) come back in CGS units
