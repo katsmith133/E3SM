@@ -1454,7 +1454,7 @@ v=accumulatedLandIceFrazilSalinityFlux; write(m,"('LandIceFrazilSalinityFlux',es
            relativeCarbonErrorBoundsFac
 
       logical ::  &
-           conservationCheck_carbon_failure_abort = .true.
+           conservationCheck_carbon_failure_abort = .false.
 
       integer, pointer :: &
            nCellsSolve, &

@@ -373,6 +373,7 @@
 <config_coef_3rd_order>0.25</config_coef_3rd_order>
 <config_flux_limiter>'monotonic'</config_flux_limiter>
 <config_remap_limiter>'monotonic'</config_remap_limiter>
+<config_passive_tracers_supercycle_timestep>0</config_passive_tracers_supercycle_timestep>
 
 <!-- bottom_drag -->
 <config_use_implicit_bottom_drag>.true.</config_use_implicit_bottom_drag>

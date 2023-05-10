@@ -1716,6 +1716,14 @@ Valid values: 'none','monotonic','weno'
 Default: Defined in namelist_defaults.xml
 </entry>
 
+<entry id="config_passive_tracers_supercycle_timestep" type="integer"
+        category="advection" group="advection">
+if value > 1, then the passive tracer time step is this value times the baroclinic time step
+
+Order of polynomial used for tracer reconstruction at layer edges for flux-form method                   
+Valid values:Any positive integer value greater than or equal to 0.
+Default: Defined in namelist_defaults.xml
+</entry>
 
 <!-- bottom_drag -->
 

@@ -978,7 +978,7 @@ contains
          end do
       end if
 
-      call mpas_timer_stop("ecosys source-sink")
+!      call mpas_timer_stop("ecosys source-sink")
 
     contains
 
