@@ -615,8 +615,8 @@ contains
       integer :: poolidx
       logical :: active_tracers, zero_surface_flux
       real (kind=RKIND), dimension(:), pointer :: areaCell
-      real (kind=RKIND), dimension(:,:), pointer :: layerThicknessLcl, zMidLcl, &
-           vertAleTransportTopLcl, layerThickEdgeLcl
+      real (kind=RKIND), dimension(:,:), pointer :: layerThickEdgeLcl, &
+           layerThicknessLcl, zMidLcl, vertAleTransportTopLcl
 
       ! End preamble
       !-----------------------------------------------------------------
@@ -735,7 +735,7 @@ contains
 
          zero_surface_flux = .true.
          dtuse = dt
-!         layerThickEdgeLcl => layerThickEdge
+         layerThickEdgeLcl => layerThickEdgeMean
          layerThicknessLcl => layerThickness
          zMidLcl => zMid
          vertAleTransportTopLcl => vertAleTransportTop
@@ -746,7 +746,7 @@ contains
                if (poolidx /= 1) print *, 'amb> passive must come after active'
                call ocn_tracer_supercycle_accum( &
                     tendPool, nCellsAll, maxLevelCell, nEdgesAll, nVertLevels, &
-                    layerThicknessLcl, layerThickEdgeMean, zMidLcl, &
+                    layerThicknessLcl, layerThickEdgeLcl, zMidLcl, &
                     normalThicknessFlux, vertAleTransportTopLcl)
             else
                if (trim(groupItr % memberName) == 'ecosysTracers') then
@@ -761,7 +761,7 @@ contains
                dtuse = ocn_tracer_supercycle_get_supercycle()*dt
                call ocn_tracer_supercycle_fill( &
                     tendPool, nCellsAll, maxLevelCell, nEdgesAll, nVertLevels, &
-                    layerThicknessLcl, layerThickEdgeMean, zMidLcl, &
+                    layerThicknessLcl, layerThickEdgeLcl, zMidLcl, &
                     normalThicknessFlux, vertAleTransportTopLcl)
             end if
          end if
@@ -832,34 +832,14 @@ contains
          !
          ! initialize tracer surface fluxes and tendencies to zero.
          !
-!         !$omp parallel
-!         !$omp do schedule(runtime) private(k,n)
-!         do iCell = 1, nCellsAll
-!         do k=1,nVertLevels
-!         do n=1,nTracersGroup
-!            tracerGroupTend(n,k,iCell) = 0.0_RKIND
-!         end do
-!         end do
-!         end do
-!         !$omp end do
-
-!         !$omp do schedule(runtime) private(n)
-!         do iCell = 1, nCellsAll
-!         do n=1,nTracersGroup
-!            tracerGroupSurfaceFlux       (n,iCell) = 0.0_RKIND
-!            tracerGroupSurfaceFluxRunoff (n,iCell) = 0.0_RKIND
-!            tracerGroupSurfaceFluxRemoved(n,iCell) = 0.0_RKIND
-!         end do
-!         end do
-!         !$omp end do
-!         !$omp end parallel
-                               
          if (zero_surface_flux) then
             !$omp parallel
             !$omp do schedule(runtime)
             do iCell = 1, nCellsAll
                tracerGroupTend(:,:, iCell) = 0.0_RKIND
                tracerGroupSurfaceFlux(:, iCell) = 0.0_RKIND
+               tracerGroupSurfaceFluxRunoff (n,iCell) = 0.0_RKIND
+               tracerGroupSurfaceFluxRemoved(n,iCell) = 0.0_RKIND
             end do
             !$omp end do
             !$omp end parallel
@@ -1194,7 +1174,7 @@ contains
             !$omp end parallel
          endif ! compute budgets
 
-         call ocn_tracer_hmix_tend(meshPool, layerThickEdgeMean, &
+         call ocn_tracer_hmix_tend(meshPool, layerThickEdgeLcl, &
                                    layerThicknessLcl, zMidLcl, tracerGroup, &
                                    RediKappa, slopeTriadUp, &
                                    slopeTriadDown, dtuse, isActiveTracer, &

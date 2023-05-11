@@ -2874,6 +2874,14 @@ Valid values: .true. or .false.
 Default: Defined in namelist_defaults.xml
 </entry>
 
+<entry id="config_ecosysTracers_subcycle_param" type="logical"
+       category="tracer_forcing_ecosysTracers" group="tracer_forcing_ecosysTracers">
+if true and supercycle_timestep > 1, the ecosys parameterization is subcycled to match the baroclinic time step
+
+Valid values: .true. or .false.
+Default: Defined in namelist_defaults.xml
+</entry>
+
 
 <!-- tracer_forcing_DMSTracers -->
 

@@ -1887,36 +1887,37 @@ contains
      end if
 
      do iCell=1,nCellsSolve
-        flux( 1,iCell) = flux( 1,iCell) + depositionFluxNO3(iCell)*convertLengthMKStoCGS
-        flux( 2,iCell) = flux( 2,iCell) + depositionFluxNH4(iCell)*convertLengthMKStoCGS
-        flux( 3,iCell) = flux( 3,iCell) + IRON_FLUX_IN(iCell)*convertLengthMKStoCGS
+        flux(no3_ind_MPAS,iCell)         = flux(no3_ind_MPAS,iCell) + depositionFluxNO3(iCell)*convertLengthMKStoCGS
+        flux(nh4_ind_MPAS,iCell)         = flux(nh4_ind_MPAS,iCell) + depositionFluxNH4(iCell)*convertLengthMKStoCGS
+        flux(fe_ind_MPAS,iCell)          = flux(fe_ind_MPAS,iCell) + IRON_FLUX_IN(iCell)*convertLengthMKStoCGS
 
-        flux( 4,iCell) = flux( 4,iCell) + riverFluxNO3(iCell)*convertLengthMKStoCGS
-        flux( 5,iCell) = flux( 5,iCell) + riverFluxPO4(iCell)*convertLengthMKStoCGS
-        flux( 6,iCell) = flux( 6,iCell) + riverFluxDON(iCell) * 0.9_RKIND*convertLengthMKStoCGS
-        flux( 7,iCell) = flux( 7,iCell) + riverFluxDON(iCell) * 0.1_RKIND*convertLengthMKStoCGS
-        flux( 8,iCell) = flux( 8,iCell) + riverFluxDOP(iCell) * 0.975_RKIND*convertLengthMKStoCGS
-        flux( 9,iCell) = flux( 9,iCell) + riverFluxDOP(iCell) * 0.025_RKIND*convertLengthMKStoCGS
-        flux(10,iCell) = flux(10,iCell) + riverFluxSiO3(iCell)*convertLengthMKStoCGS
-        flux(11,iCell) = flux(11,iCell) + riverFluxFe(iCell)*convertLengthMKStoCGS / parm_Fe_bioavail
-        flux(12,iCell) = flux(12,iCell) + riverFluxDIC(iCell)*convertLengthMKStoCGS
-        flux(13,iCell) = flux(13,iCell) + riverFluxDIC(iCell)*convertLengthMKStoCGS
-        flux(14,iCell) = flux(14,iCell) + riverFluxALK(iCell)*convertLengthMKStoCGS
-        flux(15,iCell) = flux(15,iCell) + riverFluxDOC(iCell)*convertLengthMKStoCGS
+        flux(no3_ind_MPAS,iCell)         = flux(no3_ind_MPAS,iCell) + riverFluxNO3(iCell)*convertLengthMKStoCGS
+        flux(po4_ind_MPAS,iCell)         = flux(po4_ind_MPAS,iCell) + riverFluxPO4(iCell)*convertLengthMKStoCGS
+        flux(don_ind_MPAS,iCell)         = flux(don_ind_MPAS,iCell) + riverFluxDON(iCell) * 0.9_RKIND*convertLengthMKStoCGS
+        flux(donr_ind_MPAS,iCell)        = flux(donr_ind_MPAS,iCell) + riverFluxDON(iCell) * 0.1_RKIND*convertLengthMKStoCGS
+        flux(dop_ind_MPAS,iCell)         = flux(dop_ind_MPAS,iCell) + riverFluxDOP(iCell) * 0.975_RKIND*convertLengthMKStoCGS
+        flux(dopr_ind_MPAS,iCell)        = flux(dopr_ind_MPAS,iCell) + riverFluxDOP(iCell) * 0.025_RKIND*convertLengthMKStoCGS
+        flux(sio3_ind_MPAS,iCell)        = flux(sio3_ind_MPAS,iCell) + riverFluxSiO3(iCell)*convertLengthMKStoCGS
+        flux(fe_ind_MPAS,iCell)          = flux(fe_ind_MPAS,iCell) + riverFluxFe(iCell)*convertLengthMKStoCGS / parm_Fe_bioavail
+        flux(dic_ind_MPAS,iCell)         = flux(dic_ind_MPAS,iCell) + riverFluxDIC(iCell)*convertLengthMKStoCGS
+        flux(dic_alt_co2_ind_MPAS,iCell) = flux(dic_alt_co2_ind_MPAS,iCell) + riverFluxDIC(iCell)*convertLengthMKStoCGS
+        flux(alk_ind_MPAS,iCell)         = flux(alk_ind_MPAS,iCell) + riverFluxALK(iCell)*convertLengthMKStoCGS
+        flux(alk_alt_co2_ind_MPAS,iCell) = flux(alk_alt_co2_ind_MPAS,iCell) + riverFluxALK(iCell)*convertLengthMKStoCGS
+        flux(doc_ind_MPAS,iCell)         = flux(doc_ind_MPAS,iCell) + riverFluxDOC(iCell)*convertLengthMKStoCGS
+        flux(docr_ind_MPAS,iCell)        = flux(docr_ind_MPAS,iCell) + riverFluxDOC(iCell)*convertLengthMKStoCGS
 
         if (config_use_ecosysTracers_sea_ice_coupling) then
-           flux(16,iCell) = flux(16,iCell) + iceFluxNO3(iCell)*convertLengthMKStoCGS
-           flux(17,iCell) = flux(17,iCell) + iceFluxDON(iCell)*convertLengthMKStoCGS
-           flux(18,iCell) = flux(18,iCell) + iceFluxDOCr(iCell)*convertLengthMKStoCGS
-           flux(19,iCell) = flux(19,iCell) + iceFluxSiO3(iCell)*convertLengthMKStoCGS
-           flux(20,iCell) = flux(20,iCell) + iceFluxNH4(iCell)*convertLengthMKStoCGS
-           flux(21,iCell) = flux(21,iCell) + iceFluxFeDissolved(iCell)*convertLengthMKStoCGS / parm_Fe_bioavail
-           flux(22,iCell) = flux(22,iCell) + iceFluxDIC(iCell)*convertLengthMKStoCGS
-           flux(23,iCell) = flux(23,iCell) + iceFluxDIC(iCell)*convertLengthMKStoCGS
-           flux(24,iCell) = flux(24,iCell) + iceFluxDOC(1,iCell)*convertLengthMKStoCGS + iceFluxDOC(2,iCell)*convertLengthMKStoCGS
-           flux(25,iCell) = flux(25,iCell) + iceFluxPhytoC(1,iCell)*convertLengthMKStoCGS
-           flux(26,iCell) = flux(26,iCell) + iceFluxPhytoC(2,iCell)*convertLengthMKStoCGS
-           flux(27,iCell) = flux(27,iCell) + iceFluxPhytoC(3,iCell)*convertLengthMKStoCGS
+           flux(no3_ind_MPAS,iCell)         = flux(no3_ind_MPAS,iCell) + iceFluxNO3(iCell)*convertLengthMKStoCGS
+           flux(don_ind_MPAS,iCell)         = flux(don_ind_MPAS,iCell) + iceFluxDON(iCell)*convertLengthMKStoCGS
+           flux(donr_ind_MPAS,iCell)        = flux(donr_ind_MPAS,iCell) + iceFluxDOCr(iCell)*convertLengthMKStoCGS
+           flux(sio3_ind_MPAS,iCell)        = flux(sio3_ind_MPAS,iCell) + iceFluxSiO3(iCell)*convertLengthMKStoCGS
+           flux(nh4_ind_MPAS,iCell)         = flux(nh4_ind_MPAS,iCell) + iceFluxNH4(iCell)*convertLengthMKStoCGS
+           flux(fe_ind_MPAS,iCell)          = flux(fe_ind_MPAS,iCell) + iceFluxFeDissolved(iCell)*convertLengthMKStoCGS / parm_Fe_bioavail
+           flux(dic_ind_MPAS,iCell)         = flux(dic_ind_MPAS,iCell) + iceFluxDIC(iCell)*convertLengthMKStoCGS
+           flux(dic_alt_co2_ind_MPAS,iCell) = flux(dic_alt_co2_ind_MPAS,iCell) + iceFluxDIC(iCell)*convertLengthMKStoCGS
+           flux(doc_ind_MPAS,iCell)         = flux(doc_ind_MPAS,iCell) + iceFluxDOC(1,iCell)*convertLengthMKStoCGS + iceFluxDOC(2,iCell)*convertLengthMKStoCGS
+           flux(diatC_ind_MPAS,iCell)       = flux(diatC_ind_MPAS,iCell) + iceFluxPhytoC(1,iCell)*convertLengthMKStoCGS
+           flux(spC_ind_MPAS,iCell)       = flux(spC_ind_MPAS,iCell) + iceFluxPhytoC(2,iCell)*convertLengthMKStoCGS
         endif
      end do
    end subroutine ocn_tracer_ecosys_surface_flux_accumulate_fluxes!}}}

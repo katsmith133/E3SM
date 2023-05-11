@@ -555,6 +555,7 @@ add_default($nl, 'config_ecosysTracers_diagnostic_fields_level2');
 add_default($nl, 'config_ecosysTracers_diagnostic_fields_level3');
 add_default($nl, 'config_ecosysTracers_diagnostic_fields_level4');
 add_default($nl, 'config_ecosysTracers_diagnostic_fields_level5');
+add_default($nl, 'config_ecosysTracers_subcycle_param');
 
 #############################################
 # Namelist group: tracer_forcing_DMSTracers #

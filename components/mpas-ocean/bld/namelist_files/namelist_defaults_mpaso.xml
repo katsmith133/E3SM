@@ -571,6 +571,7 @@
 <config_ecosysTracers_diagnostic_fields_level3>.false.</config_ecosysTracers_diagnostic_fields_level3>
 <config_ecosysTracers_diagnostic_fields_level4>.false.</config_ecosysTracers_diagnostic_fields_level4>
 <config_ecosysTracers_diagnostic_fields_level5>.false.</config_ecosysTracers_diagnostic_fields_level5>
+<config_ecosysTracers_subcycle_param>.false.</config_ecosysTracers_subcycle_param>
 
 <!-- tracer_forcing_DMSTracers -->
 <config_use_DMSTracers>.false.</config_use_DMSTracers>
