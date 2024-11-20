@@ -85,3 +85,6 @@
 [submodule "externals/cpptrace"]
 	path = externals/cpptrace
 	url = git@github.com:jeremy-rifkin/cpptrace
+[submodule "components/omega/external/GSW-C"]
+	path = components/omega/external/GSW-C
+	url = git@github.com:E3SM-Project/GSW-C.git
