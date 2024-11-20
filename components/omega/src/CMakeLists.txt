@@ -48,6 +48,7 @@ target_link_libraries(
     parmetis
     metis
     gptl
+    gsw_c
     pacer
     stdc++fs
     cpptrace::cpptrace
