@@ -1,0 +1,207 @@
+<nml_record name="tracer_forcing_riverTagTracers">
+  <nml_option name="config_use_riverTagTracers" type="logical" default_value=".false." units="unitless"
+	      description="if true, the 'riverTagTracers' category is enabled for the run"
+	      possible_values=".true. or .false."
+	      />
+  <nml_option name="config_use_riverTagTracers_surface_bulk_forcing" type="logical" default_value=".true." units="unitless"
+	      description="if true, surface bulk forcing from coupler is added to surfaceTracerRunoffFlux in 'riverTagTracers' category. True by default because the main function of this tracer group is tracking freshwater fluxes from river runoff"
+	      possible_values=".true. or .false."
+	      />
+  <nml_option name="config_use_riverTagTracers_surface_restoring" type="logical" default_value=".false." units="unitless"
+	      description="if true, surface restoring source is applied to tracers in 'riverTagTracers' category"
+	      possible_values=".true. or .false."
+	      />
+  <nml_option name="config_use_riverTagTracers_interior_restoring" type="logical" default_value=".false." units="unitless"
+	      description="if true, interior restoring source is applied to tracers in 'riverTagTracers' category"
+	      possible_values=".true. or .false."
+	      />
+  <nml_option name="config_use_riverTagTracers_exponential_decay" type="logical" default_value=".false." units="unitless"
+	      description="if true, exponential decay source is applied to tracers in 'riverTagTracers' category"
+	      possible_values=".true. or .false."
+	      />
+  <nml_option name="config_use_riverTagTracers_idealAge_forcing" type="logical" default_value=".false." units="unitless"
+	      description="if true, idealAge forcing source is applied to tracers in 'riverTagTracers' category"
+	      possible_values=".true. or .false."
+	      />
+  <nml_option name="config_use_riverTagTracers_ttd_forcing" type="logical" default_value=".false." units="unitless"
+	      description="if true, transit time distribution forcing source is applied to tracers in 'riverTagTracers' category"
+	      possible_values=".true. or .false."
+	      />
+  <nml_option name="config_use_riverTagTracers_surface_value" type="logical" default_value=".false." units="unitless"
+	      description="if true, surface value is computed for 'riverTagTracers' category"
+	      possible_values=".true. or .false."
+	      />
+  <nml_option name="config_riverTagTracers_tracer1_lower_latitude" type="real" default_value="0.0" units="degrees"
+	      description="The lower latitude bound of rivertag tracer1"
+	      possible_values="Any real number between -90 and 90"
+	      />
+  <nml_option name="config_riverTagTracers_tracer1_upper_latitude" type="real" default_value="0.0" units="degrees"
+              description="The upper latitude bound of rivertag tracer1"
+              possible_values="Any real number between -90 and 90"
+              />
+  <nml_option name="config_riverTagTracers_tracer1_right_longitude" type="real" default_value="0.0" units="degrees"
+              description="The right longitude bound of rivertag tracer1"
+              possible_values="Any real number between 0 and 360"
+              />
+  <nml_option name="config_riverTagTracers_tracer1_left_longitude" type="real" default_value="0.0" units="degrees"
+              description="The lelft longitude bound of rivertag tracer1"
+              possible_values="Any real number between 0 and 360"
+              />
+  <nml_option name="config_riverTagTracers_tracer2_lower_latitude" type="real" default_value="0.0" units="degrees"
+              description="The lower latitude bound of rivertag tracer2"
+	      possible_values="Any real number between -90 and 90"
+	      />
+  <nml_option name="config_riverTagTracers_tracer2_upper_latitude" type="real" default_value="0.0" units="degrees"
+	      description="The upper latitude bound of rivertag tracer2"
+	      possible_values="Any real number between -90 and 90"
+	      />
+  <nml_option name="config_riverTagTracers_tracer2_right_longitude" type="real" default_value="0.0" units="degrees"
+	      description="The right longitude bound of rivertag tracer2"
+	      possible_values="Any real number between 0 and 360"
+	      />
+  <nml_option name="config_riverTagTracers_tracer2_left_longitude" type="real" default_value="0.0" units="degrees"
+	      description="The lelft longitude bound of rivertag tracer2"
+	      possible_values="Any real number between 0 and 360"
+	      />
+</nml_record>
+
+<packages>
+  <package name="riverTagTracersPKG" description="This package includes variables required to include rivertagTracers."/>
+  <package name="riverTagTracersBulkRestoringPKG" description="This package includes variables required to compute bulk restoring on the riverTagTracers group."/>
+  <package name="riverTagTracersSurfaceRestoringPKG" description="This package includes variables required to compute surface restoring on the riverTagTracers group."/>
+  <package name="riverTagTracersInteriorRestoringPKG" description="This package includes variables required to compute interior restoring on the riverTagTracers group."/>
+  <package name="riverTagTracersExponentialDecayPKG" description="This package includes variables required to compute exponential decay on the riverTagTracers group."/>
+  <package name="riverTagTracersIdealAgePKG" description="This package includes variables required to compute ideal age forcing on the riverTagTracers group."/>
+  <package name="riverTagTracersTTDPKG" description="This package includes variables required to compute transit-time distribution forcing on the riverTagTracers group."/>
+
+</packages>
+
+<var_struct name="state" time_levs="2">
+  <var_struct name="tracers" time_levs="2">
+    <var_array name="riverTagTracers" dimensions="nVertLevels nCells Time" type="real" packages="riverTagTracersPKG" default_value="0.0" missing_value="FILLVAL" missing_value_mask="cellMask">
+      <var name="riverTagTracer1RiverRunoff" array_group="riverTagGRP"
+	   description="Concentration of rivertag tracer1 river runoff"
+	   />
+      <var name="riverTagTracer2RiverRunoff" array_group="riverTagGRP"
+	   description="Concentration of rivertag tracer2 river runoff"
+	   />
+    </var_array>
+  </var_struct>
+</var_struct>
+
+<var_struct name="tend" time_levs="1">
+  <var_struct name="tracersTend" time_levs="1">
+    <var_array name="riverTagTracersTend" type="real" dimensions="nVertLevels nCells Time" packages="riverTagTracersPKG" missing_value="FILLVAL" missing_value_mask="cellMask">
+      <var name="riverTagTracer1RiverRunoffTend" array_group="riverTagGRP"
+	    description="Tendency for rivertag tracer1 river runoff"
+	    />
+      <var name="riverTagTracer2RiverRunoffTend" array_group="riverTagGRP"
+	    description="Tendency for rivertag tracer2 river runoff"
+	    />
+    </var_array>
+  </var_struct>
+</var_struct>
+
+<var_struct name="forcing" time_levs="1">
+  <var_struct name="tracersSurfaceFlux" time_levs="1">
+    <var_array name="riverTagTracersSurfaceFlux" type="real" dimensions="nCells Time" packages="riverTagTracersPKG">
+      <var name="riverTagTracer1SurfaceFlux" array_group="riverTagTracerFluxGRP" units="m s^-1"
+	   description="Flux of rivertag tracer1 through the ocean surface. Positive into ocean."
+	   />
+      <var name="riverTagTracer2SurfaceFlux" array_group="riverTagTracerFluxGRP" units="m s^-1"
+	   description="Flux of rivertag tracer2 through the ocean surface. Positive into ocean."
+	   />
+    </var_array>
+
+    <var_array name="riverTagTracersSurfaceFluxRunoff" type="real" dimensions="nCells Time" packages="riverTagTracersPKG">
+      <var name="riverTagTracer1SurfaceFluxRunoff" array_group="riverTagRunoffFluxGRP" units="m s^-1"
+	    description="Flux of rivertag tracer1 through the ocean surface due to river runoff. Positive into ocean."
+	    />
+      <var name="riverTagTracer2SurfaceFluxRunoff" array_group="riverTagRunoffFluxGRP" units="m s^-1"
+	    description="Flux of rivertag tracer2 through the ocean surface due to river runoff. Positive into ocean."
+	    />
+    </var_array>
+    <var_array name="riverTagTracersSurfaceFluxSubglacialRunoff" type="real" dimensions="nCells Time" packages="riverTagTracersPKG">
+      <var name="riverTagTracer1SurfaceFluxSubglacialRunoff" array_group="riverTagSubglacialRunoffFluxGRP" units="m s^-1"
+	    description="Flux of rivertag tracer1 through the ocean surface due to subglacial runoff. Positive into ocean."
+	    />
+      <var name="riverTagTracer2SurfaceFluxSubglacialRunoff" array_group="riverTagSubglacialRunoffFluxGRP" units="m s^-1"
+	    description="Flux of rivertag tracer2 through the ocean surface due to subglacial runoff. Positive into ocean."
+	    />
+    </var_array>
+    <var_array name="riverTagTracersSurfaceFluxRemoved" type="real" dimensions="nCells Time" packages="riverTagTracersPKG">
+      <var name="riverTagTracer1SurfaceFluxRemoved" array_group="riverTagRemovedFluxGRP" units="m s^-1"
+	    description="Flux of rivertag tracer1 that is ignored coming into the ocean. Positive into ocean."
+	    />
+      <var name="riverTagTracer2SurfaceFluxRemoved" array_group="riverTagRemovedFluxGRP" units="m s^-1"
+	    description="Flux of rivertag tracer2 that is ignored coming into the ocean. Positive into ocean."
+	    />
+    </var_array>
+  </var_struct>
+  <var_struct name="tracersSurfaceRestoringFields" time_levs="1">
+    <var_array name="riverTagTracersPistonVelocity" type="real" dimensions="nCells Time" packages="riverTagTracersSurfaceRestoringPKG">
+      <var name="riverTagTracer1PistonVelocity" array_group="riverTagGRP" units="m s^-1"
+	    description="A non-negative field controlling the rate at which tracer1 is restored to tracer1SurfaceRestoringValue"
+	    />
+      <var name="riverTagTracer2PistonVelocity" array_group="riverTagGRP" units="m s^-1"
+	    description="A non-negative field controlling the rate at which tracer2 is restored to tracer2SurfaceRestoringValue"
+	    />
+    </var_array>
+    <var_array name="riverTagTracersSurfaceRestoringValue" type="real" dimensions="nCells Time" packages="riverTagTracersSurfaceRestoringPKG">
+      <var name="riverTagTracer1SurfaceRestoringValue" array_group="riverTagGRP" units="C"
+	    description="tracer1 is restored toward this field at a rate controlled by tracer1PistonVelocity."
+	    />
+      <var name="riverTagTracer2SurfaceRestoringValue" array_group="riverTagGRP" units="C"
+	    description="tracer2 is restored toward this field at a rate controlled by tracer2PistonVelocity."
+	    />
+    </var_array>
+  </var_struct>
+  <var_struct name="tracersInteriorRestoringFields" time_levs="1">
+    <var_array name="riverTagTracersInteriorRestoringRate" type="real" dimensions="nVertLevels nCells Time" packages="riverTagTracersInteriorRestoringPKG">
+      <var name="riverTagTracer1InteriorRestoringRate" array_group="riverTagGRP" units="{s}^-1"
+	    description="A non-negative field controlling the rate at which tracer1 is restored to tracer1InteriorRestoringValue"
+	    />
+      <var name="riverTagTracer2InteriorRestoringRate" array_group="riverTagGRP" units="{s}^-1"
+	    description="A non-negative field controlling the rate at which tracer2 is restored to tracer2InteriorRestoringValue"
+	    />
+    </var_array>
+    <var_array name="riverTagTracersInteriorRestoringValue" type="real" dimensions="nVertLevels nCells Time" packages="riverTagTracersInteriorRestoringPKG">
+      <var name="riverTagTracer1InteriorRestoringValue" array_group="riverTagGRP" units="C"
+	    description="tracer1 is restored toward this field at a rate controlled by tracer1InteriorRestoringRate."
+	    />
+      <var name="riverTagTracer2InteriorRestoringValue" array_group="riverTagGRP" units="C"
+	    description="tracer2 is restored toward this field at a rate controlled by tracer2InteriorRestoringRate."
+	    />
+    </var_array>
+  </var_struct>
+  <var_struct name="tracersExponentialDecayFields" time_levs="1">
+    <var_array name="riverTagTracersExponentialDecayRate" type="real" dimensions="Time" packages="riverTagTracersExponentialDecayPKG">
+      <var name="riverTagTracer1ExponentialDecayRate" array_group="riverTagGRP" units="s^-1"
+	    description="A non-negative field controlling the exponential decay of tracer1"
+	    />
+      <var name="riverTagTracer2ExponentialDecayRate" array_group="riverTagGRP" units="s^-1"
+	    description="A non-negative field controlling the exponential decay of tracer2"
+	    />
+    </var_array>
+  </var_struct>
+  <var_struct name="tracersIdealAgeFields" time_levs="1">
+    <var_array name="riverTagTracersIdealAgeMask" type="real" dimensions="nCells Time" packages="riverTagTracersIdealAgePKG">
+      <var name="riverTagTracer1IdealAgeMask" array_group="riverTagGRP"
+	    description="In top layer, tracer1 is reset to tracer1 * tracer1IdealAgeMask, valid values of tracer1IdealAgeMask or 0 and 1"
+	    />
+      <var name="riverTagTracer2IdealAgeMask" array_group="riverTagGRP"
+	    description="In top layer, tracer2 is reset to tracer2 * tracer2IdealAgeMask, valid values of tracer2IdealAgeMask or 0 and 1"
+	    />
+    </var_array>
+  </var_struct>
+  <var_struct name="tracersTTDFields" time_levs="1">
+    <var_array name="riverTagTracersTTDMask" type="real" dimensions="nCells Time" packages="riverTagTracersTTDPKG">
+      <var name="riverTagTracer1TTDMask" array_group="riverTagGRP"
+	    description="In top layer, tracer1 is reset to TTDMask, valid values of tracer1TTDMask or 0 and 1"
+	    />
+      <var name="riverTagTracer2TTDMask" array_group="riverTagGRP"
+	    description="In top layer, tracer2 is reset to TTDMask, valid values of tracer2TTDMask or 0 and 1"
+	    />
+    </var_array>
+  </var_struct>
+</var_struct>

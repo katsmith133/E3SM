@@ -126,6 +126,9 @@ contains
       if ( trim(groupName) == 'activeTracers' ) then
          call ocn_surface_bulk_forcing_active_tracers(meshPool, forcingPool, tracerGroup,  &
             tracersSurfaceFlux, tracersSurfaceFluxRunoff, tracersSurfaceFluxRemoved, layerThickness, dt, err)
+      elseif ( trim(groupName) == 'riverTagTracers' ) then
+         call ocn_surface_bulk_forcing_rivertag_tracers(meshPool, forcingPool, tracerGroup,  &
+            tracersSurfaceFluxRunoff, err)
       end if
       call mpas_timer_stop("bulk_" // trim(groupName))
 
@@ -865,6 +868,127 @@ contains
       endif ! bulkThicknessFluxOn
 
    end subroutine ocn_surface_bulk_forcing_active_tracers_subglacial_runoff!}}}
+
+!***********************************************************************
+!
+!  routine ocn_surface_bulk_forcing_rivertag_tracers
+!
+!> \brief   computes a tracer tendency due to freshwater river fluxes
+!> \author  Katherine Smith
+!> \date    January 2025
+!> \details
+!>  This routine computes a tracer tendency due to freshwater river fluxes
+!
+!-----------------------------------------------------------------------
+
+   subroutine ocn_surface_bulk_forcing_rivertag_tracers(meshPool, forcingPool, tracerGroup,  &
+      riverTagSurfaceFluxRunoff, err)!{{{
+      !-----------------------------------------------------------------
+      !
+      ! input variables
+      !
+      !-----------------------------------------------------------------
+      type (mpas_pool_type), intent(in) :: meshPool !< Input: mesh information
+
+      !-----------------------------------------------------------------
+      !
+      ! input/output variables
+      !
+      !-----------------------------------------------------------------
+
+      type (mpas_pool_type), intent(inout) :: forcingPool
+
+      ! two dimensional arrays
+      real (kind=RKIND), dimension(:,:), intent(inout) :: &
+         riverTagSurfaceFluxRunoff
+      real (kind=RKIND), dimension(:,:,:), intent(inout) :: tracerGroup
+
+      !-----------------------------------------------------------------
+      !
+      ! output variables
+      !
+      !-----------------------------------------------------------------
+
+      integer, intent(out) :: err !< Output: Error flag
+
+      !-----------------------------------------------------------------
+      !
+      ! local variables
+      !
+      !-----------------------------------------------------------------
+
+      integer :: iCell, nCells
+      real (kind=RKIND) :: lat, lon
+      real (kind=RKIND) :: top_lat_tracer1, bott_lat_tracer1, &
+         right_lon_tracer1, left_lon_tracer1, top_lat_tracer2, &
+         bott_lat_tracer2, right_lon_tracer2, left_lon_tracer2
+      integer, dimension(:), pointer :: nCellsArray
+
+      type(mpas_pool_type),pointer :: tracersSurfaceFluxPool
+      integer, pointer :: index_rivertag_tracer1, index_rivertag_tracer2
+      real (kind=RKIND), dimension(:), pointer :: riverRunoffFlux
+
+      err = 0
+
+      call mpas_pool_get_dimension(meshPool, 'nCellsArray', nCellsArray)
+
+      call mpas_pool_get_subpool(forcingPool, 'tracersSurfaceFlux', &
+         tracersSurfaceFluxPool)
+
+      call mpas_pool_get_dimension(tracersSurfaceFluxPool, &
+         'index_riverTagTracer1SurfaceFlux', index_rivertag_tracer1)
+
+      call mpas_pool_get_dimension(tracersSurfaceFluxPool, &
+         'index_riverTagTracer2SurfaceFlux', index_rivertag_tracer2)
+
+      call mpas_pool_get_array(forcingPool, 'riverRunoffFlux', &
+         riverRunoffFlux)
+
+      top_lat_tracer1 = config_riverTagTracers_tracer1_upper_latitude
+      bott_lat_tracer1 = config_riverTagTracers_tracer1_lower_latitude
+      right_lon_tracer1 = config_riverTagTracers_tracer1_right_longitude
+      left_lon_tracer1 = config_riverTagTracers_tracer1_left_longitude
+      top_lat_tracer2 = config_riverTagTracers_tracer2_upper_latitude
+      bott_lat_tracer2 = config_riverTagTracers_tracer2_lower_latitude
+      right_lon_tracer2 = config_riverTagTracers_tracer2_right_longitude
+      left_lon_tracer2 = config_riverTagTracers_tracer2_left_longitude
+
+      nCells = nCellsArray( 3 )
+      if (associated(index_rivertag_tracer1)) then
+         do iCell=1,nCells
+            lat = latCell(iCell)*180/3.1415
+            lon = lonCell(iCell)*180/3.1415
+            if (      lat >= bott_lat_tracer1 .and. lat <= top_lat_tracer1 &
+               .and. lon >= left_lon_tracer1 .and. lon <= right_lon_tracer1 ) then
+               riverTagSurfaceFluxRunoff(index_rivertag_tracer1, iCell) = &
+                  riverRunoffFlux(iCell) / rho_sw
+            else
+               riverTagSurfaceFluxRunoff(index_rivertag_tracer1, iCell) = 0.0
+            end if
+         end do                 ! iCell
+      else
+         call mpas_log_write('index_rivertag_tracer1 is not associated')
+         riverTagSurfaceFluxRunoff(index_rivertag_tracer1, :) = 0.0_RKIND
+      endif
+
+      if (associated(index_rivertag_tracer2)) then
+         do iCell=1,nCells
+            lat= latCell(iCell)*180/3.1415
+            lon= lonCell(iCell)*180/3.1415
+            if (      lat >= bott_lat_tracer2 .and. lat <= top_lat_tracer2 &
+               .and. lon >= left_lon_tracer2 .and. lon <= right_lon_tracer2 ) then
+               riverTagSurfaceFluxRunoff(index_rivertag_tracer2, iCell) = &
+                  riverRunoffFlux(iCell) / rho_sw
+            else
+               riverTagSurfaceFluxRunoff(index_rivertag_tracer2, iCell) = 0.0_RKIND
+            end if
+         end do                 ! iCell
+      else
+         call mpas_log_write('index_rivertag_tracer2 is not associated')
+         riverTagSurfaceFluxRunoff(index_rivertag_tracer2, :) = 0.0_RKIND
+      end if
+
+   end subroutine ocn_surface_bulk_forcing_rivertag_tracers!}}}
 
 end module ocn_surface_bulk_forcing
 

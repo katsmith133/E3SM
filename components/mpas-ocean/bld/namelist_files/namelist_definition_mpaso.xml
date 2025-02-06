@@ -3131,6 +3131,134 @@ Valid values: .true. or .false.
 Default: Defined in namelist_defaults.xml
 </entry>
 
+<!-- tracer_forcing_riverTagTracers -->
+<entry id="config_use_riverTagTracers" type="logical"
+       category="tracer_forcing_riverTagTracers" group="tracer_forcing_riverTagTracers">
+if true, the 'riverTagTracers' category is enabled for the run
+
+Valid Values: .true. or .false.
+Default: Defined in namelist_defaults.xml
+</entry>
+
+<entry id="config_use_riverTagTracers_surface_bulk_forcing" type="logical"
+       category="tracer_forcing_riverTagTracers" group="tracer_forcing_riverTagTracers">
+if true, surface bulk forcing from coupler is added to surfaceTracerFlux in 'riverTagTracers' category. True by default because the main function of this tracer group is tracking freshwater fluxes from rivers
+
+Valid Values: .true. or .false.
+Default: Defined in namelist_defaults.xml
+</entry>
+
+<entry id="config_use_riverTagTracers_surface_restoring" type="logical"
+       category="tracer_forcing_riverTagTracers" group="tracer_forcing_riverTagTracers">
+if true, surface restoring source is applied to tracers in 'riverTagTracers' category
+
+Valid Values: .true. or .false.
+Default: Defined in namelist_defaults.xml
+</entry>
+
+<entry id="config_use_riverTagTracers_interior_restoring" type="logical"
+       category="tracer_forcing_riverTagTracers" group="tracer_forcing_riverTagTracers">
+if true, interior restoring source is applied to tracers in 'riverTagTracers' category
+
+Valid Values: .true. or .false.
+Default: Defined in namelist_defaults.xml
+</entry>
+
+<entry id="config_use_riverTagTracers_exponential_decay" type="logical"
+       category="tracer_forcing_riverTagTracers" group="tracer_forcing_riverTagTracers">
+if true, exponential decay source is applied to tracers in 'riverTagTracers' category
+
+Valid Values: .true. or .false.
+Default: Defined in namelist_defaults.xml
+</entry>
+
+<entry id="config_use_riverTagTracers_idealAge_forcing" type="logical"
+       category="tracer_forcing_riverTagTracers" group="tracer_forcing_riverTagTracers">
+if true, idealAge forcing source is applied to tracers in 'riverTagTracers' category
+
+Valid Values: .true. or .false.
+Default: Defined in namelist_defaults.xml
+</entry>
+
+<entry id="config_use_riverTagTracers_ttd_forcing" type="logical"
+       category="tracer_forcing_riverTagTracers" group="tracer_forcing_riverTagTracers">
+if true, transit time distribution forcing source is applied to tracers in 'riverTagTracers' category
+
+Valid Values: .true. or .false.
+Default: Defined in namelist_defaults.xml
+</entry>
+
+<entry id="config_use_riverTagTracers_surface_value" type="logical"
+       category="tracer_forcing_riverTagTracers" group="tracer_forcing_riverTagTracers">
+if true, surface value is computed for 'riverTagTracers' category
+
+Valid Values: .true. or .false.
+Default: Defined in namelist_defaults.xml
+</entry>
+
+<entry id="config_riverTagTracers_tracer1_lower_latitude" type="real"
+       category="tracer_forcing_riverTagTracers" group="tracer_forcing_riverTagTracers">
+The lower latitude bound of riverTag tracer1
+
+Valid Values: Any number -90 to 90
+Default: Defined in namelist_defaults.xml
+</entry>
+
+<entry id="config_riverTagTracers_tracer1_upper_latitude" type="real"
+       category="tracer_forcing_riverTagTracers" group="tracer_forcing_riverTagTracers">
+The upper latitude bound of rivertag tracer1
+
+Valid Values: Any number -90 to 90
+Default: Defined in namelist_defaults.xml
+</entry>
+
+<entry id="config_riverTagTracers_tracer1_right_longitude" type="real"
+       category="tracer_forcing_riverTagTracers" group="tracer_forcing_riverTagTracers">
+The right longitude bound of rivertag tracer1
+
+Valid Values: Any number 0 to 360
+Default: Defined in namelist_defaults.xml
+</entry>
+
+<entry id="config_riverTagTracers_tracer1_left_longitude" type="real"
+       category="tracer_forcing_riverTagTracers" group="tracer_forcing_riverTagTracers">
+The left longitude bound of rivertag tracer1
+
+Valid Values: Any number 0 to 360
+Default: Defined in namelist_defaults.xml
+</entry>
+
+<entry id="config_riverTagTracers_tracer2_lower_latitude" type="real"
+       category="tracer_forcing_riverTagTracers" group="tracer_forcing_riverTagTracers">
+The lower latitude bound of rivertag tracer2
+
+Valid Values: Any number -90 to 90
+Default: Defined in namelist_defaults.xml
+</entry>
+
+<entry id="config_riverTagTracers_tracer2_upper_latitude" type="real"
+       category="tracer_forcing_riverTagTracers" group="tracer_forcing_riverTagTracers">
+The upper latitude bound of rivertag tracer2
+
+Valid Values: Any number -90 to 90
+Default: Defined in namelist_defaults.xml
+</entry>
+
+<entry id="config_riverTagTracers_tracer2_right_longitude" type="real"
+       category="tracer_forcing_riverTagTracers" group="tracer_forcing_riverTagTracers">
+The right longitude bound of rivertag tracer2
+
+Valid Values: Any number 0 to 360
+Default: Defined in namelist_defaults.xml
+</entry>
+
+<entry id="config_riverTagTracers_tracer2_left_longitude" type="real"
+       category="tracer_forcing_riverTagTracers" group="tracer_forcing_riverTagTracers">
+The left longitude bound of rivertag tracer2
+
+Valid Values: Any number 0 to 360
+Default: Defined in namelist_defaults.xml
+</entry>
 
 <!-- tracer_forcing_DMSTracers -->
 

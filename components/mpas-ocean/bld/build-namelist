@@ -1183,6 +1183,27 @@ if ($ice_bgc eq 'ice_bgc' ) {
 }
 add_default($nl, 'config_use_ecosysTracers_river_inputs_from_coupler');
 
+####################################################
+# Namelist group: tracer_forcing_riverTagTracers #
+####################################################
+
+add_default($nl, 'config_use_riverTagTracers');
+add_default($nl, 'config_use_riverTagTracers_surface_bulk_forcing');
+add_default($nl, 'config_use_riverTagTracers_surface_restoring');
+add_default($nl, 'config_use_riverTagTracers_interior_restoring');
+add_default($nl, 'config_use_riverTagTracers_exponential_decay');
+add_default($nl, 'config_use_riverTagTracers_idealAge_forcing');
+add_default($nl, 'config_use_riverTagTracers_ttd_forcing');
+add_default($nl, 'config_use_riverTagTracers_surface_value');
+add_default($nl, 'config_riverTagTracers_tracer1_lower_latitude');
+add_default($nl, 'config_riverTagTracers_tracer1_upper_latitude');
+add_default($nl, 'config_riverTagTracers_tracer1_right_longitude');
+add_default($nl, 'config_riverTagTracers_tracer1_left_longitude');
+add_default($nl, 'config_riverTagTracers_tracer2_lower_latitude');
+add_default($nl, 'config_riverTagTracers_tracer2_upper_latitude');
+add_default($nl, 'config_riverTagTracers_tracer2_right_longitude');
+add_default($nl, 'config_riverTagTracers_tracer2_left_longitude');
+
 #############################################
 # Namelist group: tracer_forcing_DMSTracers #
 #############################################
@@ -1852,6 +1873,7 @@ my @groups = qw(run_modes
                 tracer_forcing_dmstracers
                 tracer_forcing_macromoleculestracers
                 tracer_forcing_idealagetracers
+                tracer_forcing_rivertagtracers
                 tracer_forcing_cfctracers
                 am_globalstats
                 am_surfaceareaweightedaverages

@@ -746,6 +746,24 @@
 <config_ecosysTracers_diagnostic_fields_level4>.false.</config_ecosysTracers_diagnostic_fields_level4>
 <config_ecosysTracers_diagnostic_fields_level5>.false.</config_ecosysTracers_diagnostic_fields_level5>
 
+<!-- tracer_forcing_riverTagTracers -->
+<config_use_riverTagTracers>.false.</config_use_riverTagTracers>
+<config_use_riverTagTracers_surface_bulk_forcing>.true.</config_use_riverTagTracers_surface_bulk_forcing>
+<config_use_riverTagTracers_surface_restoring>.false.</config_use_riverTagTracers_surface_restoring>
+<config_use_riverTagTracers_interior_restoring>.false.</config_use_riverTagTracers_interior_restoring>
+<config_use_riverTagTracers_exponential_decay>.false.</config_use_riverTagTracers_exponential_decay>
+<config_use_riverTagTracers_idealAge_forcing>.false.</config_use_riverTagTracers_idealAge_forcing>
+<config_use_riverTagTracers_ttd_forcing>.false.</config_use_riverTagTracers_ttd_forcing>
+<config_use_riverTagTracers_surface_value>.false.</config_use_riverTagTracers_surface_value>
+<config_riverTagTracers_tracer1_lower_latitude>0.0</config_riverTagTracers_tracer1_lower_latitude>
+<config_riverTagTracers_tracer1_upper_latitude>0.0</config_riverTagTracers_tracer1_upper_latitude>
+<config_riverTagTracers_tracer1_right_longitude>0.0</config_riverTagTracers_tracer1_right_longitude>
+<config_riverTagTracers_tracer1_left_longitude>0.0</config_riverTagTracers_tracer1_left_longitude>
+<config_riverTagTracers_tracer2_lower_latitude>0.0</config_riverTagTracers_tracer2_lower_latitude>
+<config_riverTagTracers_tracer2_upper_latitude>0.0</config_riverTagTracers_tracer2_upper_latitude>
+<config_riverTagTracers_tracer2_right_longitude>0.0</config_riverTagTracers_tracer2_right_longitude>
+<config_riverTagTracers_tracer2_left_longitude>0.0</config_riverTagTracers_tracer2_left_longitude>
+
 <!-- tracer_forcing_DMSTracers -->
 <config_use_DMSTracers>.false.</config_use_DMSTracers>
 <config_use_DMSTracers_surface_bulk_forcing>.false.</config_use_DMSTracers_surface_bulk_forcing>
