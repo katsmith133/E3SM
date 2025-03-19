@@ -86,33 +86,34 @@ int Eos::init() {
 } // end init
 
 // KOKKOS_FUNCTION
-KOKKOS_FUNCTION void
-Eos::computeSpecVolLinear(const Array2DReal &SpecVol, I4 ICell, I4 KChunk,
-                          const Array2DReal &ConservativeTemperature,
-                          const Array2DReal &AbsoluteSalinity,
-                          const Array2DReal &Pressure) const {
-
-   const I4 KStart = KChunk * VecLength;
-   for (int KVec = 0; KVec < VecLength; ++KVec) {
-      const I4 K = KStart + KVec;
-      SpecVol(ICell, K) =
-          1.0 /
-          (linearRhoT0S0 + (lineardRhodT * ConservativeTemperature(ICell, K) +
-                            lineardRhodS * AbsoluteSalinity(ICell, K)));
-   }
-}
-
-KOKKOS_FUNCTION void Eos::computeSpecVolTEOS10Poly75t(
-    const Array2DReal &SpecVol, I4 ICell, I4 KChunk,
-    const Array2DReal &ConservativeTemperature,
-    const Array2DReal &AbsoluteSalinity, const Array2DReal &Pressure) const {
-
-   const I4 KStart = KChunk * VecLength;
-   for (int KVec = 0; KVec < VecLength; ++KVec) {
-      const I4 K        = KStart + KVec;
-      SpecVol(ICell, K) = 1.0;
-   }
-}
+// KOKKOS_FUNCTION void
+// Eos::computeSpecVolLinear(const Array2DReal &SpecVol, I4 ICell, I4 KChunk,
+//                           const Array2DReal &ConservativeTemperature,
+//                           const Array2DReal &AbsoluteSalinity,
+//                           const Array2DReal &Pressure) const {
+//
+//    const I4 KStart = KChunk * VecLength;
+//    for (int KVec = 0; KVec < VecLength; ++KVec) {
+//       const I4 K = KStart + KVec;
+//       SpecVol(ICell, K) =
+//           1.0 /
+//           (linearRhoT0S0 + (lineardRhodT * ConservativeTemperature(ICell, K)
+//           +
+//                             lineardRhodS * AbsoluteSalinity(ICell, K)));
+//    }
+// }
+//
+// KOKKOS_FUNCTION void Eos::computeSpecVolTEOS10Poly75t(
+//     const Array2DReal &SpecVol, I4 ICell, I4 KChunk,
+//     const Array2DReal &ConservativeTemperature,
+//     const Array2DReal &AbsoluteSalinity, const Array2DReal &Pressure) const {
+//
+//    const I4 KStart = KChunk * VecLength;
+//    for (int KVec = 0; KVec < VecLength; ++KVec) {
+//       const I4 K        = KStart + KVec;
+//       SpecVol(ICell, K) = 1.0;
+//    }
+// }
 
 void Eos::computeSpecVol(const Array2DReal &SpecVol,
                          const Array2DReal &ConservativeTemperature,
@@ -140,34 +141,6 @@ void Eos::computeSpecVol(const Array2DReal &SpecVol,
           });
    }
 }
-
-// void Eos::computeSpecVolLinear(Array2DReal &SpecVol, I4 ICell, I4 KChunk,
-//                                const Array2DReal &ConservativeTemperature,
-//                                const Array2DReal &AbsoluteSalinity,
-//                                const Array2DReal &Pressure) {
-//
-//    const I4 KStart = KChunk * VecLength;
-//    for (int KVec = 0; KVec < VecLength; ++KVec) {
-//       const I4 K = KStart + KVec;
-//       SpecVol(ICell, K) =
-//           1.0 /
-//           (linearRhoT0S0 + (lineardRhodT * ConservativeTemperature(ICell, K)
-//           +
-//                             lineardRhodS * AbsoluteSalinity(ICell, K)));
-//    }
-// }
-//
-// void Eos::computeSpecVolTEOS10Poly75t(
-//     Array2DReal &SpecVol, I4 ICell, I4 KChunk,
-//     const Array2DReal &ConservativeTemperature,
-//     const Array2DReal &AbsoluteSalinity, const Array2DReal &Pressure) {
-//
-//    const I4 KStart = KChunk * VecLength;
-//    for (int KVec = 0; KVec < VecLength; ++KVec) {
-//       const I4 K        = KStart + KVec;
-//       SpecVol(ICell, K) = 1.0;
-//    }
-// }
 
 //------------------------------------------------------------------------------
 // Destroys the eos class
