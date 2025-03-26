@@ -33,6 +33,13 @@ enum class EosType {
 class TEOS10Poly75t {
  public:
    // bool Enabled;
+   Array2DReal vp;
+
+   //  Array1DReal vp1[VecLength]{};
+   //  Array1DReal vp2[VecLength]{};
+   //  Array1DReal vp3[VecLength]{};
+   //  Array1DReal vp4[VecLength]{};
+   //  Array1DReal vp5[VecLength]{};
 
    /// constructor declaration
    TEOS10Poly75t();
@@ -45,88 +52,106 @@ class TEOS10Poly75t {
 
       const I4 KStart = KChunk * VecLength;
       for (int KVec = 0; KVec < VecLength; ++KVec) {
-         const I4 K        = KStart + KVec;
-         SpecVol(ICell, K) = 1.0;
+         const I4 K = KStart + KVec;
+         calcTSCoeffs(vp, K, ConservativeTemperature(ICell, K),
+                      AbsoluteSalinity(ICell, K));
+         SpecVol(ICell, K) = calcRefProfile(Pressure(ICell, K)) +
+                             calcDelta(K, Pressure(ICell, K));
       }
    }
-   //   /// The functor takes point-wise conservative temperature, absolute
-   //   salinity
-   //   // and pressure as inputs and outputs the specific volume
-   //   KOKKOS_FUNCTION Real operator()(Real Sa, Real Ct, Real P) const {
-   //      Real SpecVol = refprofile(P) + calcdelta(Sa, Ct, P);
-   //      return SpecVol;
-   //   }
-   //   KOKKOS_FUNCTION Real calcdelta(Real Sa, Real Ct, Real P) const {
-   //      const Real SAu    = 40 * 35.16504 / 35;
-   //      const Real CTu    = 40.;
-   //      const Real Pu     = 1e4;
-   //      const Real DeltaS = 24.;
-   //      GSW_SPECVOL_COEFFICIENTS;
-   //      const Real ss = Kokkos::sqrt((Sa + DeltaS) / SAu);
-   //      Real tt       = Ct / CTu;
-   //      Real pp       = P / Pu;
-   //      Real vp5      = V005;
-   //
-   //      Real vp4 = V014 * tt + V104 * ss + V004;
-   //      Real vp3 =
-   //          (V023 * tt + V113 * ss + V013) * tt + (V203 * ss + V103) * ss +
-   //          V003;
-   //      Real vp2 = (((V042 * tt + V132 * ss + V032) * tt +
-   //                   (V222 * ss + V122) * ss + V022) *
-   //                      tt +
-   //                  ((V312 * ss + V212) * ss + V112) * ss + V012) *
-   //                     tt +
-   //                 (((V402 * ss + V302) * ss + V202) * ss + V102) * ss +
-   //                 V002;
-   //      Real vp1 =
-   //          ((((V051 * tt + V141 * ss + V041) * tt + (V231 * ss + V131) * ss
-   //          +
-   //             V031) *
-   //                tt +
-   //            ((V321 * ss + V221) * ss + V121) * ss + V021) *
-   //               tt +
-   //           (((V411 * ss + V311) * ss + V211) * ss + V111) * ss + V011) *
-   //              tt +
-   //          ((((V501 * ss + V401) * ss + V301) * ss + V201) * ss + V101) * ss
-   //          + V001;
-   //      Real vp0 =
-   //          (((((V060 * tt + V150 * ss + V050) * tt + (V240 * ss + V140) * ss
-   //          +
-   //              V040) *
-   //                 tt +
-   //             ((V330 * ss + V230) * ss + V130) * ss + V030) *
-   //                tt +
-   //            (((V420 * ss + V320) * ss + V220) * ss + V120) * ss + V020) *
-   //               tt +
-   //           ((((V510 * ss + V410) * ss + V310) * ss + V210) * ss + V110) *
-   //           ss + V010) *
-   //              tt +
-   //          (((((V600 * ss + V500) * ss + V400) * ss + V300) * ss + V200) *
-   //          ss +
-   //           V100) *
-   //              ss +
-   //          V000;
-   //
-   //      Real delta =
-   //          ((((vp5 * pp + vp4) * pp + vp3) * pp + vp2) * pp + vp1) * pp +
-   //          vp0;
-   //      return delta;
-   //   }
-   //   KOKKOS_FUNCTION Real refprofile(Real P) const {
-   //      const Real Pu  = 1e4;
-   //      const Real V00 = -4.4015007269e-05;
-   //      const Real V01 = 6.9232335784e-06;
-   //      const Real V02 = -7.5004675975e-07;
-   //      const Real V03 = 1.7009109288e-08;
-   //      const Real V04 = -1.6884162004e-08;
-   //      const Real V05 = 1.9613503930e-09;
-   //      Real pp        = P / Pu;
-   //
-   //      Real v0 =
-   //          (((((V05 * pp + V04) * pp + V03) * pp + V02) * pp + V01) * pp +
-   //          V00) * pp;
-   //      return v0;
-   //   }
+
+   // assumes that we have called calcTSCoeffs already -- I may want a check to
+   // be sure KOKKOS_FUNCTION void calcDisplacedSpecVol(const Array2DReal
+   // &SpecVolDisplaced,
+   //                                 I4 ICell, I4 KChunk,
+   //                                 const Array2DReal &Pressure) const {
+
+   //    const I4 KStart = KChunk * VecLength;
+   //    // insert exception for the surface
+   //    for (int KVec = 0; KVec < VecLength; ++KVec) {
+   //       const I4 K        = KStart + 1 + KVec;
+   //       SpecVolDisplaced(ICell, K) = calcRefProfile(Pressure(ICell, K-1)) +
+   //       calcDelta(Pressure(ICell, K-1));
+   //    }
+   // }
+
+   //   This member function takes point-wise conservative temperature, absolute
+   //   salinity and calculate the relevant coefficients stored as data members
+   KOKKOS_FUNCTION void calcTSCoeffs(const Array2DReal &vp, const I4 K,
+                                     const Real Sa, const Real Ct) const {
+      const Real SAu = 40 * 35.16504 / 35;
+      const Real CTu = 40.;
+      // const Real Pu     = 1e4;
+      const Real DeltaS = 24.;
+      GSW_SPECVOL_COEFFICIENTS;
+      const Real ss = Kokkos::sqrt((Sa + DeltaS) / SAu);
+      Real tt       = Ct / CTu;
+      // Real pp       = P / Pu;
+      vp(5, K) = V005;
+
+      vp(4, K) = V014 * tt + V104 * ss + V004;
+      vp(3, K) =
+          (V023 * tt + V113 * ss + V013) * tt + (V203 * ss + V103) * ss + V003;
+      vp(2, K) = (((V042 * tt + V132 * ss + V032) * tt +
+                   (V222 * ss + V122) * ss + V022) *
+                      tt +
+                  ((V312 * ss + V212) * ss + V112) * ss + V012) *
+                     tt +
+                 (((V402 * ss + V302) * ss + V202) * ss + V102) * ss + V002;
+      vp(1, K) =
+          ((((V051 * tt + V141 * ss + V041) * tt + (V231 * ss + V131) * ss +
+             V031) *
+                tt +
+            ((V321 * ss + V221) * ss + V121) * ss + V021) *
+               tt +
+           (((V411 * ss + V311) * ss + V211) * ss + V111) * ss + V011) *
+              tt +
+          ((((V501 * ss + V401) * ss + V301) * ss + V201) * ss + V101) * ss +
+          V001;
+      vp(0, K) =
+          (((((V060 * tt + V150 * ss + V050) * tt + (V240 * ss + V140) * ss +
+              V040) *
+                 tt +
+             ((V330 * ss + V230) * ss + V130) * ss + V030) *
+                tt +
+            (((V420 * ss + V320) * ss + V220) * ss + V120) * ss + V020) *
+               tt +
+           ((((V510 * ss + V410) * ss + V310) * ss + V210) * ss + V110) * ss +
+           V010) *
+              tt +
+          (((((V600 * ss + V500) * ss + V400) * ss + V300) * ss + V200) * ss +
+           V100) *
+              ss +
+          V000;
+      // could insert a check here (abs(value)> 0 value or <e+33)
+   }
+
+   KOKKOS_FUNCTION Real calcDelta(I4 K, const Real P) const {
+      const Real Pu = 1e4;
+      Real pp       = P / Pu;
+
+      Real delta =
+          ((((vp(5, K) * pp + vp(4, K)) * pp + vp(3, K)) * pp + vp(2, K)) * pp +
+           vp(1, K)) *
+              pp +
+          vp(0, K);
+      return delta;
+   }
+   KOKKOS_FUNCTION Real calcRefProfile(const Real P) const {
+      const Real Pu  = 1e4;
+      const Real V00 = -4.4015007269e-05;
+      const Real V01 = 6.9232335784e-06;
+      const Real V02 = -7.5004675975e-07;
+      const Real V03 = 1.7009109288e-08;
+      const Real V04 = -1.6884162004e-08;
+      const Real V05 = 1.9613503930e-09;
+      Real pp        = P / Pu;
+
+      Real v0 =
+          (((((V05 * pp + V04) * pp + V03) * pp + V02) * pp + V01) * pp + V00) *
+          pp;
+      return v0;
+   }
 };
 
 /// Linear Equation of State

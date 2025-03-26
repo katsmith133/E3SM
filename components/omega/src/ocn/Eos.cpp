@@ -7,7 +7,7 @@ namespace OMEGA {
 Eos *Eos::DefaultEos = nullptr;
 std::map<std::string, std::unique_ptr<Eos>> Eos::AllEos;
 
-TEOS10Poly75t::TEOS10Poly75t() {}
+TEOS10Poly75t::TEOS10Poly75t() { vp = Array2DReal("vp", 6, VecLength); }
 
 LinearEOS::LinearEOS() {}
 
