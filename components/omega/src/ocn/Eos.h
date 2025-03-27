@@ -35,12 +35,6 @@ class TEOS10Poly75t {
    // bool Enabled;
    Array2DReal vp;
 
-   //  Array1DReal vp1[VecLength]{};
-   //  Array1DReal vp2[VecLength]{};
-   //  Array1DReal vp3[VecLength]{};
-   //  Array1DReal vp4[VecLength]{};
-   //  Array1DReal vp5[VecLength]{};
-
    /// constructor declaration
    TEOS10Poly75t();
 
@@ -55,8 +49,13 @@ class TEOS10Poly75t {
          const I4 K = KStart + KVec;
          calcTSCoeffs(vp, K, ConservativeTemperature(ICell, K),
                       AbsoluteSalinity(ICell, K));
+         // Array2DReal v0 = calcRefProfile(Pressure(ICell, K));
+         // Array2DReal delta = calcDelta(K, Pressure(ICell, K));
+         // LOG_INFO("Value of v0: {}", v0(0, 0));
+         // LOG_INFO("Value of delta: {}", delta(0, 0));
          SpecVol(ICell, K) = calcRefProfile(Pressure(ICell, K)) +
                              calcDelta(K, Pressure(ICell, K));
+         // LOG_INFO("Value of SpecVol: {}", SpecVol(ICell,K);
       }
    }
 
@@ -78,7 +77,7 @@ class TEOS10Poly75t {
    //   This member function takes point-wise conservative temperature, absolute
    //   salinity and calculate the relevant coefficients stored as data members
    KOKKOS_FUNCTION void calcTSCoeffs(const Array2DReal &vp, const I4 K,
-                                     const Real Sa, const Real Ct) const {
+                                     const Real Ct, const Real Sa) const {
       const Real SAu = 40 * 35.16504 / 35;
       const Real CTu = 40.;
       // const Real Pu     = 1e4;
@@ -123,6 +122,7 @@ class TEOS10Poly75t {
            V100) *
               ss +
           V000;
+
       // could insert a check here (abs(value)> 0 value or <e+33)
    }
 
@@ -135,6 +135,7 @@ class TEOS10Poly75t {
            vp(1, K)) *
               pp +
           vp(0, K);
+      // LOG_INFO("Value of delta: {}", delta);
       return delta;
    }
    KOKKOS_FUNCTION Real calcRefProfile(const Real P) const {
@@ -150,6 +151,7 @@ class TEOS10Poly75t {
       Real v0 =
           (((((V05 * pp + V04) * pp + V03) * pp + V02) * pp + V01) * pp + V00) *
           pp;
+      // LOG_INFO("Value of v0: {}", v0);
       return v0;
    }
 };

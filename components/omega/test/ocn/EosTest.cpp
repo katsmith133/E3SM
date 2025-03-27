@@ -244,9 +244,11 @@ int test_fetch_coeff() {
 int poly75tDeltaCheckValue() {
    int Err         = 0;
    const Real RTol = 1e-10;
+   const int K     = 0;
 
    TEOS10Poly75t specvolpoly75t;
-   Real Delta = specvolpoly75t.calcdelta(Sa, Ct, P);
+   specvolpoly75t.calcTSCoeffs(specvolpoly75t.vp, K, Ct, Sa);
+   Real Delta = specvolpoly75t.calcDelta(K, P);
    LOG_INFO("Teos10 poly75tDeltaCheckValue: produced delta from poly75t");
    LOG_INFO("Value of Delta: {}", Delta);
    bool Check = isApprox(Delta, DeltaRefReal, RTol);
@@ -265,17 +267,32 @@ int poly75tDeltaCheckValue() {
 int poly75tSpecVolCheckValue() {
    int Err         = 0;
    const Real RTol = 1e-10;
+   Array2DReal Sarray;
+   Array2DReal Tarray;
+   Array2DReal Parray;
+   const int K     = 0;
+   const int ICell = 0;
+   Array2DReal SpecVol;
+
+   Sarray        = Array2DReal("Sarray", 1, 1);
+   Tarray        = Array2DReal("Tarray", 1, 1);
+   Parray        = Array2DReal("Parray", 1, 1);
+   SpecVol       = Array2DReal("SpecVol", 1, 1);
+   Sarray(0, 0)  = Sa;
+   Tarray(0, 0)  = Ct;
+   Parray(0, 0)  = P;
+   SpecVol(0, 0) = 0.0;
 
    TEOS10Poly75t specvolpoly75t;
-   Real SpecVol = specvolpoly75t(Sa, Ct, P);
+   specvolpoly75t(SpecVol, ICell, K, Tarray, Sarray, Parray);
    LOG_INFO("Teos10 poly75tSpecVolCheckValue: produced SpecVol from poly75t");
-   LOG_INFO("Value of SpecVol: {}", SpecVol);
-   bool Check = isApprox(SpecVol, VolRefReal, RTol);
+   LOG_INFO("Value of SpecVol: {}", SpecVol(0, 0));
+   bool Check = isApprox(SpecVol(0, 0), VolRefReal, RTol);
    if (!Check) {
       Err++;
       LOG_ERROR("Teos10 poly75tSpecVolCheckValue: SpecVol isApprox FAIL, "
                 "expected {}, got {}",
-                VolRefReal, SpecVol);
+                VolRefReal, SpecVol(0, 0));
    }
    if (Err == 0) {
       LOG_INFO("Teos10 poly75tSpecVolCheckValue: PASS");
@@ -283,74 +300,77 @@ int poly75tSpecVolCheckValue() {
    return Err;
 }
 
-int linearSpecVolCheckValue() {
-   int Err          = 0;
-   const Real RTol  = 1e-10;
-   const Real RTol2 = 1e-2; // >>machine prection
-   Real Sa          = 30.;
-   Real Ct          = 10.;
-   Real P           = 1000.;
-
-   LinearEOS specvollinear;
-   Real SpecVol = specvollinear(Sa, Ct, P);
-   LOG_INFO("linearSpecVolCheckValue: produced SpecVol from linear EOS");
-   LOG_INFO("Value of SpecVol: {}", SpecVol);
-   bool Check      = isApprox(SpecVol, VolRefReal, RTol);  // expect False
-   bool CheckClose = isApprox(SpecVol, VolRefReal, RTol2); // expect True
-   if (Check) {
-      Err++;
-      LOG_ERROR("linearSpecVolCheckValue: SpecVol Linear is undistinguishable "
-                "from TEOS10 Ref Value");
-   } else if (!Check) {
-      LOG_INFO("linearSpecVolCheckValue: SpecVol TEOS10 {}, got {} with Linear",
-               VolRefReal, SpecVol);
-   }
-   if (CheckClose) {
-      LOG_INFO(
-          "linearSpecVolCheckValue: SpecVol TEOS10 and Linear are within {}",
-          RTol2);
-   } else if (!CheckClose) {
-      Err++;
-      LOG_ERROR("linearSpecVolCheckValue: SpecVol TEOS10 and Linear are NOT "
-                "close. Check input values");
-   }
-   if (Err == 0) {
-      LOG_INFO("linearSpecVolCheckValue: PASS");
-   }
-   return Err;
-}
-
-int linearDensityLinearityTest() {
-   int Err         = 0;
-   const Real RTol = 1e-10;
-   Real Sa1        = 30.;
-   Real Ct1        = 15.;
-   Real Sa2        = 33.;
-   Real Ct2        = 10.;
-
-   LinearEOS specvollinear;
-   Real DRhoS =
-       1. / specvollinear(Sa2, Ct1, P) - 1. / specvollinear(Sa1, Ct1, P);
-   Real DRhoT =
-       1. / specvollinear(Sa1, Ct2, P) - 1. / specvollinear(Sa1, Ct1, P);
-   Real DRhoTS =
-       1. / specvollinear(Sa2, Ct2, P) - 1. / specvollinear(Sa1, Ct1, P);
-   LOG_INFO("linearDensityLinearityTest: produced SpecVol from linear EOS");
-   LOG_INFO("Value of drhodS: {}", DRhoS);
-   LOG_INFO("Value of drhodT: {}", DRhoT);
-   bool Check = isApprox(DRhoTS, DRhoS + DRhoT, RTol);
-   if (!Check) {
-      Err++;
-      LOG_ERROR("linearDensityLinearityTest: Sum(DRho) {}, DRhoTS {}",
-                DRhoS + DRhoT, DRhoTS);
-   }
-   LOG_INFO("linearDensityLinearityTest: Sum(DRho) is undistinguishable from "
-            "DRhoTS");
-   if (Err == 0) {
-      LOG_INFO("linearDensityLinearityTest: PASS");
-   }
-   return Err;
-}
+// int linearSpecVolCheckValue() {
+//    int Err          = 0;
+//    const Real RTol  = 1e-10;
+//    const Real RTol2 = 1e-2; // (>> machine precision)
+//    Real Sa          = 30.;
+//    Real Ct          = 10.;
+//    Real P           = 1000.;
+//
+//    LinearEOS specvollinear;
+//    Real SpecVol = specvollinear(Sa, Ct, P);
+//    LOG_INFO("linearSpecVolCheckValue: produced SpecVol from linear EOS");
+//    LOG_INFO("Value of SpecVol: {}", SpecVol);
+//    bool Check      = isApprox(SpecVol, VolRefReal, RTol);  // expect False
+//    bool CheckClose = isApprox(SpecVol, VolRefReal, RTol2); // expect True
+//    if (Check) {
+//       Err++;
+//       LOG_ERROR("linearSpecVolCheckValue: SpecVol Linear is undistinguishable
+//       "
+//                 "from TEOS10 Ref Value");
+//    } else if (!Check) {
+//       LOG_INFO("linearSpecVolCheckValue: SpecVol TEOS10 {}, got {} with
+//       Linear",
+//                VolRefReal, SpecVol);
+//    }
+//    if (CheckClose) {
+//       LOG_INFO(
+//           "linearSpecVolCheckValue: SpecVol TEOS10 and Linear are within {}",
+//           RTol2);
+//    } else if (!CheckClose) {
+//       Err++;
+//       LOG_ERROR("linearSpecVolCheckValue: SpecVol TEOS10 and Linear are NOT "
+//                 "close. Check input values");
+//    }
+//    if (Err == 0) {
+//       LOG_INFO("linearSpecVolCheckValue: PASS");
+//    }
+//    return Err;
+// }
+//
+// int linearDensityLinearityTest() {
+//    int Err         = 0;
+//    const Real RTol = 1e-10;
+//    Real Sa1        = 30.;
+//    Real Ct1        = 15.;
+//    Real Sa2        = 33.;
+//    Real Ct2        = 10.;
+//
+//    LinearEOS specvollinear;
+//    Real DRhoS =
+//        1. / specvollinear(Sa2, Ct1, P) - 1. / specvollinear(Sa1, Ct1, P);
+//    Real DRhoT =
+//        1. / specvollinear(Sa1, Ct2, P) - 1. / specvollinear(Sa1, Ct1, P);
+//    Real DRhoTS =
+//        1. / specvollinear(Sa2, Ct2, P) - 1. / specvollinear(Sa1, Ct1, P);
+//    LOG_INFO("linearDensityLinearityTest: produced SpecVol from linear EOS");
+//    LOG_INFO("Value of drhodS: {}", DRhoS);
+//    LOG_INFO("Value of drhodT: {}", DRhoT);
+//    bool Check = isApprox(DRhoTS, DRhoS + DRhoT, RTol);
+//    if (!Check) {
+//       Err++;
+//       LOG_ERROR("linearDensityLinearityTest: Sum(DRho) {}, DRhoTS {}",
+//                 DRhoS + DRhoT, DRhoTS);
+//    }
+//    LOG_INFO("linearDensityLinearityTest: Sum(DRho) is undistinguishable from
+//    "
+//             "DRhoTS");
+//    if (Err == 0) {
+//       LOG_INFO("linearDensityLinearityTest: PASS");
+//    }
+//    return Err;
+// }
 
 //------------------------------------------------------------------------------
 // The test driver for Eos testing
@@ -365,12 +385,12 @@ int main(int argc, char *argv[]) {
    MPI_Init(&argc, &argv);
    Kokkos::initialize(argc, argv);
    {
-      //    RetVal += gswcSpecVolCheckValue();
-      //    RetVal += poly75tDeltaCheckValue();
-      //    RetVal += poly75tSpecVolCheckValue();
+      RetVal += gswcSpecVolCheckValue();
+      RetVal += poly75tDeltaCheckValue();
+      RetVal += poly75tSpecVolCheckValue();
       //    RetVal += linearSpecVolCheckValue();
       //    RetVal += linearDensityLinearityTest();
-      RetVal += eosTest();
+      // RetVal += eosTest();
    }
    Kokkos::finalize();
    MPI_Finalize();
