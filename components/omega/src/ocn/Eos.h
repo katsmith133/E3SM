@@ -154,15 +154,17 @@ class TEOS10Poly75t {
       // LOG_INFO("Value of v0: {}", v0);
       return v0;
    }
+   //  private:
+   //    Array2DReal vp;
 };
 
 /// Linear Equation of State
 class LinearEOS {
  public:
    //   bool Enabled;
-   Real dRho_dT   = -0.2;   // alpha in kg.m-3 degC-1
-   Real dRho_dS   = 0.8;    // beta in kg m-3
-   Real Rho_T0_S0 = 1000.0; // density at (T,S)=(0,0) in kg.m-3
+   Real dRhodT  = {-0.2};   // alpha in kg.m-3 degC-1
+   Real dRhodS  = {0.8};    // beta in kg m-3
+   Real RhoT0S0 = {1000.0}; // density at (T,S)=(0,0) in kg.m-3
 
    /// constructor declaration
    LinearEOS();
@@ -179,13 +181,14 @@ class LinearEOS {
    KOKKOS_FUNCTION void operator()(const Array2DReal &SpecVol, I4 ICell,
                                    I4 KChunk,
                                    const Array2DReal &ConservativeTemperature,
-                                   const Array2DReal &AbsoluteSalinity,
-                                   const Array2DReal &Pressure) const {
+                                   const Array2DReal &AbsoluteSalinity) const {
 
       const I4 KStart = KChunk * VecLength;
       for (int KVec = 0; KVec < VecLength; ++KVec) {
-         const I4 K        = KStart + KVec;
-         SpecVol(ICell, K) = 2.0;
+         const I4 K = KStart + KVec;
+         SpecVol(ICell, K) =
+             1.0 / (RhoT0S0 + (dRhodT * ConservativeTemperature(ICell, K) +
+                               dRhodS * AbsoluteSalinity(ICell, K)));
       }
    }
 };
@@ -235,9 +238,9 @@ class Eos {
    EosType eosChoice;
    I4 NCellsAll;
    I4 NChunks;
-   Real lineardRhodT;
-   Real lineardRhodS;
-   Real linearRhoT0S0;
+   // Real lineardRhodT;
+   // Real lineardRhodS;
+   // Real linearRhoT0S0;
 
    // main methods for calculation
    // KOKKOS_FUNCTION void computeSpecVolTEOS10Poly75t(const Array2DReal

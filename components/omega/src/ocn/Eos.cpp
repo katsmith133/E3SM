@@ -10,6 +10,10 @@ std::map<std::string, std::unique_ptr<Eos>> Eos::AllEos;
 TEOS10Poly75t::TEOS10Poly75t() { vp = Array2DReal("vp", 6, VecLength); }
 
 LinearEOS::LinearEOS() {}
+// const Real dRhodT, const Real dRhodS, const Real RhoT0S0) {
+// this->dRhodT=dRhodT;
+// this->dRhodS=dRhodS;
+// this->RhoT0S0=RhoT0S0;}
 
 Eos::Eos(const std::string &Name, ///< [in] Name for eos object
          const HorzMesh *Mesh,    ///< [in] Horizontal mesh
@@ -18,7 +22,6 @@ Eos::Eos(const std::string &Name, ///< [in] Name for eos object
    SpecVol = Array2DReal("SpecVol", Mesh->NCellsSize, NVertLevels);
    SpecVolDisplaced =
        Array2DReal("SpecVolDisplaced", Mesh->NCellsSize, NVertLevels);
-   // SpecVol = Array2DReal("SpecVol", Mesh->NCellsSize, NVertLevels);
    // Array dimension lengths
    NCellsAll = Mesh->NCellsAll;
    NChunks   = NVertLevels / VecLength;
@@ -61,27 +64,31 @@ int Eos::init() {
       return Err;
    }
 
-   Err = EosConfig.get("LinearDRhoDT", DefaultEos->lineardRhodT);
+   Err = EosConfig.get("LinearDRhoDT", DefaultEos->computeSpecVolLinear.dRhodT);
    if (Err != 0) {
       LOG_CRITICAL("Eos: linear dRhodT not found in "
                    "EosConfig");
       return Err;
    }
-   Err = EosConfig.get("LinearDRhoDS", DefaultEos->lineardRhodS);
+   Err = EosConfig.get("LinearDRhoDS", DefaultEos->computeSpecVolLinear.dRhodS);
    if (Err != 0) {
       LOG_CRITICAL("Eos: linear dRhodS not found in "
                    "EosConfig");
       return Err;
    }
-   Err = EosConfig.get("LinearRhoT0S0", DefaultEos->linearRhoT0S0);
+   Err =
+       EosConfig.get("LinearRhoT0S0", DefaultEos->computeSpecVolLinear.RhoT0S0);
    if (Err != 0) {
       LOG_CRITICAL("Eos: Ref Rho linearRhoT0S0 not found in "
                    "EosConfig");
       return Err;
    }
 
-   LOG_INFO("set default values {}, {}, {}", DefaultEos->lineardRhodT,
-            DefaultEos->lineardRhodS, DefaultEos->linearRhoT0S0);
+   // LOG_INFO("set default values {}, {}, {}", DefaultEos->lineardRhodT,
+   //          DefaultEos->lineardRhodS, DefaultEos->linearRhoT0S0);
+
+   // DefaultEos->computeSpecVolLinear=computeSpecVolLinear(DefaultEos->lineardRhodT,
+   //          DefaultEos->lineardRhodS, DefaultEos->linearRhoT0S0);
    return Err;
 } // end init
 
@@ -128,8 +135,7 @@ void Eos::computeSpecVol(const Array2DReal &SpecVol,
           "eos-linear", {NCellsAll, NChunks},
           KOKKOS_LAMBDA(I4 ICell, I4 KChunk) {
              LocComputeSpecVolLinear(LocSpecVol, ICell, KChunk,
-                                     ConservativeTemperature, AbsoluteSalinity,
-                                     Pressure);
+                                     ConservativeTemperature, AbsoluteSalinity);
           });
    } else if (eosChoice == EosType::TEOS10Poly75t) {
       parallelFor(
