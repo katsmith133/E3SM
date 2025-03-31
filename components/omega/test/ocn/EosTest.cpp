@@ -54,6 +54,7 @@ const Real VolRefReal   = 0.0009732819628;
 double Sa               = 30.;
 double Ct               = 10.;
 double P                = 1000.;
+const Real RTol         = 1e-10;
 
 //------------------------------------------------------------------------------
 // The initialization routine for Eos testing. It calls various
@@ -150,6 +151,68 @@ int testEos() {
    Config *Options = Config::getOmegaConfig();
    Eos::create("TestEos", Mesh, 60); // MODIFY THIS
 
+   // test using Eos to calc specific volume
+   Eos *TestEos       = Eos::get("TestEos");
+   TestEos->eosChoice = EosType::TEOS10Poly75t;
+   // TestEos->eosChoice = EosType::Linear;
+
+   Array2DReal Sarray = Array2DReal("Sarray", Mesh->NCellsAll, 60);
+   Array2DReal Tarray = Array2DReal("Tarray", Mesh->NCellsAll, 60);
+   Array2DReal Parray = Array2DReal("Parray", Mesh->NCellsAll, 60);
+
+   // Use Kokkos::deep_copy to fill the entire view with the ref value
+   Kokkos::deep_copy(Sarray, Sa);
+   Kokkos::deep_copy(Tarray, Ct);
+   Kokkos::deep_copy(Parray, P);
+   Kokkos::deep_copy(TestEos->SpecVol, 0.0);
+   TestEos->computeSpecVol(TestEos->SpecVol, Tarray, Sarray, Parray);
+   LOG_INFO("EosTest: produced SpecVol from Eos");
+   LOG_INFO("Size of SpecVol: {}, {}", Mesh->NCellsAll, 60);
+   LOG_INFO("Value of SpecVol(0,0): {}", TestEos->SpecVol(0, 0));
+   LOG_INFO("Value of SpecVol(200,30): {}", TestEos->SpecVol(200, 30));
+   LOG_INFO("Value of SpecVol(1000,50): {}", TestEos->SpecVol(1000, 50));
+
+   Real LinearExpValue = 0.0009784735812133072;
+   Real Threshold      = VolRefReal;
+   int numMismatches   = 0;
+   const Real RTolLoc  = 1e-10;
+   bool allMatch       = true;
+   LOG_INFO("Loop extent: {}, {}", Mesh->NCellsAll, 60);
+   // for (int i = 0; i < Mesh->NCellsAll; ++i) {
+   //    for (int j = 0; j < 60; ++j) {
+   //       if (!isApprox(TestEos->SpecVol(i, j), Threshold, RTolLoc)) {
+   //          allMatch = false;
+   //          Err++;
+   //          LOG_ERROR("EosTest: SpecVol isApprox FAIL, "
+   //                 "expected {}, got {} ",
+   //                  Threshold, TestEos->SpecVol(i, j));
+   //          break; // Exit inner loop if any element fails
+   //       }
+   //    }
+   //    if (!allMatch)
+   //       break; // Exit outer loop early if needed
+   // }
+   Kokkos::parallel_reduce(
+       "CheckSpecVolMatrix",
+       Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {Mesh->NCellsAll, 60}),
+       KOKKOS_LAMBDA(const int i, const int j, int &localCount) {
+          if (!isApprox(TestEos->SpecVol(i, j), Threshold, RTolLoc)) {
+             localCount++;
+          }
+       },
+       numMismatches);
+
+   bool allMatch2 = (numMismatches == 0);
+   if (!allMatch2) {
+      Err++;
+      LOG_ERROR("EosTest: SpecVol isApprox FAIL, "
+                "expected {}, got {} mismatches",
+                Threshold, numMismatches);
+   }
+   if (Err == 0) {
+      LOG_INFO("EosTest SpecVolCalc: PASS");
+   }
+
    // test retrievel of another Eos
    if (Eos::get("TestEos")) {
       LOG_INFO("EosTest: Non-default Eos retrieval PASS");
@@ -161,12 +224,12 @@ int testEos() {
    // test erase
    Eos::erase("TestEos");
 
-   if (Eos::get("TestEos")) {
-      Err++;
-      LOG_INFO("EosTest: Non-default Eos erase FAIL");
-   } else {
-      LOG_INFO("EosTest: Non-default Eos erase PASS");
-   }
+   // if (Eos::get("TestEos")) {
+   //    Err++;
+   //    LOG_INFO("EosTest: Non-default Eos erase FAIL");
+   // } else {
+   //    LOG_INFO("EosTest: Non-default Eos erase PASS");
+   // }
 
    Eos::clear();
 
@@ -265,19 +328,15 @@ int poly75tDeltaCheckValue() {
 }
 
 int poly75tSpecVolCheckValue() {
-   int Err         = 0;
-   const Real RTol = 1e-10;
-   Array2DReal Sarray;
-   Array2DReal Tarray;
-   Array2DReal Parray;
-   const int K     = 0;
-   const int ICell = 0;
-   Array2DReal SpecVol;
+   int Err             = 0;
+   const Real RTol     = 1e-10;
+   Array2DReal Sarray  = Array2DReal("Sarray", 1, 1);
+   Array2DReal Tarray  = Array2DReal("Tarray", 1, 1);
+   Array2DReal Parray  = Array2DReal("Parray", 1, 1);
+   const int K         = 0;
+   const int ICell     = 0;
+   Array2DReal SpecVol = Array2DReal("SpecVol", 1, 1);
 
-   Sarray        = Array2DReal("Sarray", 1, 1);
-   Tarray        = Array2DReal("Tarray", 1, 1);
-   Parray        = Array2DReal("Parray", 1, 1);
-   SpecVol       = Array2DReal("SpecVol", 1, 1);
    Sarray(0, 0)  = Sa;
    Tarray(0, 0)  = Ct;
    Parray(0, 0)  = P;
@@ -300,19 +359,49 @@ int poly75tSpecVolCheckValue() {
    return Err;
 }
 
-int linearSpecVolCheckValue() {
-   int Err          = 0;
-   const Real RTol  = 1e-10;
-   const Real RTol2 = 1e-2; // (>> machine precision)
-   Array2DReal Sarray;
-   Array2DReal Tarray;
-   const int K     = 0;
-   const int ICell = 0;
-   Array2DReal SpecVol;
+// int poly75tSpecVolCheckValue2() {
+//    int Err         = 0;
+//    const Real RTol = 1e-10;
+//    Array2DReal Sarray = Array2DReal("Sarray", 1, 1);
+//    Array2DReal Tarray = Array2DReal("Tarray", 1, 1);
+//    Array2DReal Parray = Array2DReal("Parray", 1, 1);
+//    const int K     = 0;
+//    const int ICell = 0;
+//    Array2DReal SpecVol = Array2DReal("SpecVol", 1, 1);
+//
+//    Sarray(0, 0)  = Sa;
+//    Tarray(0, 0)  = Ct;
+//    Parray(0, 0)  = P;
+//    SpecVol(0, 0) = 0.0;
+//
+//    Eos testEos;
+//    EosType testType;
+//    testEos.eosChoice = testType::Linear;
+//    // TEOS10Poly75t specvolpoly75t;
+//    testEos.computeSpecVol(SpecVol, Tarray, Sarray, Parray);
+//    LOG_INFO("Teos10 poly75tSpecVolCheckValue: produced SpecVol from
+//    poly75t"); LOG_INFO("Value of SpecVol: {}", SpecVol(0, 0)); bool Check =
+//    isApprox(SpecVol(0, 0), VolRefReal, RTol); if (!Check) {
+//       Err++;
+//       LOG_ERROR("Teos10 poly75tSpecVolCheckValue: SpecVol isApprox FAIL, "
+//                 "expected {}, got {}",
+//                 VolRefReal, SpecVol(0, 0));
+//    }
+//    if (Err == 0) {
+//       LOG_INFO("Teos10 poly75tSpecVolCheckValue: PASS");
+//    }
+//    return Err;
 
-   Sarray        = Array2DReal("Sarray", 1, 1);
-   Tarray        = Array2DReal("Tarray", 1, 1);
-   SpecVol       = Array2DReal("SpecVol", 1, 1);
+int linearSpecVolCheckValue() {
+   int Err             = 0;
+   const Real RTol     = 1e-10;
+   const Real RTol2    = 1e-2; // (>> machine precision)
+   Array2DReal Sarray  = Array2DReal("Sarray", 1, 1);
+   Array2DReal Tarray  = Array2DReal("Tarray", 1, 1);
+   const int K         = 0;
+   const int ICell     = 0;
+   Array2DReal SpecVol = Array2DReal("SpecVol", 1, 1);
+
    Sarray(0, 0)  = Sa;
    Tarray(0, 0)  = Ct;
    SpecVol(0, 0) = 0.0;

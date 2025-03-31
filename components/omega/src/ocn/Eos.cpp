@@ -21,9 +21,9 @@ Eos::Eos(const std::string &Name, ///< [in] Name for eos object
          const HorzMesh *Mesh,    ///< [in] Horizontal mesh
          int NVertLevels          ///< [in] Number of vertical levels
 ) {
-   SpecVol = Array2DReal("SpecVol", Mesh->NCellsSize, NVertLevels);
+   SpecVol = Array2DReal("SpecVol", Mesh->NCellsAll, NVertLevels);
    SpecVolDisplaced =
-       Array2DReal("SpecVolDisplaced", Mesh->NCellsSize, NVertLevels);
+       Array2DReal("SpecVolDisplaced", Mesh->NCellsAll, NVertLevels);
    // Array dimension lengths
    NCellsAll = Mesh->NCellsAll;
    NChunks   = NVertLevels / VecLength;
@@ -132,7 +132,7 @@ void Eos::computeSpecVol(const Array2DReal &SpecVol,
    OMEGA_SCOPE(LocSpecVol, SpecVol);
    OMEGA_SCOPE(LocComputeSpecVolLinear, computeSpecVolLinear);
    OMEGA_SCOPE(LocComputeSpecVolTEOS10Poly75t, computeSpecVolTEOS10Poly75t);
-
+   Kokkos::deep_copy(LocSpecVol, 0.0);
    if (eosChoice == EosType::Linear) {
       parallelFor(
           "eos-linear", {NCellsAll, NChunks},

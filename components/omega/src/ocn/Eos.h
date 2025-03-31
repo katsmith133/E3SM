@@ -201,6 +201,7 @@ class LinearEOS {
 // Eos class
 class Eos {
  public:
+   EosType eosChoice;
    Array2DReal SpecVol;
    Array2DReal SpecVolDisplaced;
    void computeSpecVol(const Array2DReal &SpecVol,
@@ -240,7 +241,7 @@ class Eos {
    );
 
  private:
-   EosType eosChoice;
+   //   EosType eosChoice;
    I4 NCellsAll;
    I4 NChunks;
    // Real lineardRhodT;
