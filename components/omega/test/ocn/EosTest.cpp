@@ -247,7 +247,7 @@ int poly75tDeltaCheckValue() {
    const int K     = 0;
 
    TEOS10Poly75t specvolpoly75t;
-   specvolpoly75t.calcTSCoeffs(specvolpoly75t.vp, K, Ct, Sa);
+   specvolpoly75t.calcPCoeffs(specvolpoly75t.specVolPcoeffs, K, Ct, Sa);
    Real Delta = specvolpoly75t.calcDelta(K, P);
    LOG_INFO("Teos10 poly75tDeltaCheckValue: produced delta from poly75t");
    LOG_INFO("Value of Delta: {}", Delta);

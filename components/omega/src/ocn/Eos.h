@@ -33,7 +33,7 @@ enum class EosType {
 class TEOS10Poly75t {
  public:
    // bool Enabled;
-   Array2DReal vp;
+   Array2DReal specVolPcoeffs;
 
    /// constructor declaration
    TEOS10Poly75t();
@@ -47,8 +47,8 @@ class TEOS10Poly75t {
       const I4 KStart = KChunk * VecLength;
       for (int KVec = 0; KVec < VecLength; ++KVec) {
          const I4 K = KStart + KVec;
-         calcTSCoeffs(vp, K, ConservativeTemperature(ICell, K),
-                      AbsoluteSalinity(ICell, K));
+         calcPCoeffs(specVolPcoeffs, K, ConservativeTemperature(ICell, K),
+                     AbsoluteSalinity(ICell, K));
          // Array2DReal v0 = calcRefProfile(Pressure(ICell, K));
          // Array2DReal delta = calcDelta(K, Pressure(ICell, K));
          // LOG_INFO("Value of v0: {}", v0(0, 0));
@@ -59,7 +59,7 @@ class TEOS10Poly75t {
       }
    }
 
-   // assumes that we have called calcTSCoeffs already -- I may want a check to
+   // assumes that we have called calcPCoeffs already -- I may want a check to
    // be sure KOKKOS_FUNCTION void calcDisplacedSpecVol(const Array2DReal
    // &SpecVolDisplaced,
    //                                 I4 ICell, I4 KChunk,
@@ -76,8 +76,9 @@ class TEOS10Poly75t {
 
    //   This member function takes point-wise conservative temperature, absolute
    //   salinity and calculate the relevant coefficients stored as data members
-   KOKKOS_FUNCTION void calcTSCoeffs(const Array2DReal &vp, const I4 K,
-                                     const Real Ct, const Real Sa) const {
+   KOKKOS_FUNCTION void calcPCoeffs(const Array2DReal &specVolPcoeffs,
+                                    const I4 K, const Real Ct,
+                                    const Real Sa) const {
       const Real SAu = 40 * 35.16504 / 35;
       const Real CTu = 40.;
       // const Real Pu     = 1e4;
@@ -86,18 +87,19 @@ class TEOS10Poly75t {
       const Real ss = Kokkos::sqrt((Sa + DeltaS) / SAu);
       Real tt       = Ct / CTu;
       // Real pp       = P / Pu;
-      vp(5, K) = V005;
+      specVolPcoeffs(5, K) = V005;
 
-      vp(4, K) = V014 * tt + V104 * ss + V004;
-      vp(3, K) =
+      specVolPcoeffs(4, K) = V014 * tt + V104 * ss + V004;
+      specVolPcoeffs(3, K) =
           (V023 * tt + V113 * ss + V013) * tt + (V203 * ss + V103) * ss + V003;
-      vp(2, K) = (((V042 * tt + V132 * ss + V032) * tt +
-                   (V222 * ss + V122) * ss + V022) *
-                      tt +
-                  ((V312 * ss + V212) * ss + V112) * ss + V012) *
-                     tt +
-                 (((V402 * ss + V302) * ss + V202) * ss + V102) * ss + V002;
-      vp(1, K) =
+      specVolPcoeffs(2, K) =
+          (((V042 * tt + V132 * ss + V032) * tt + (V222 * ss + V122) * ss +
+            V022) *
+               tt +
+           ((V312 * ss + V212) * ss + V112) * ss + V012) *
+              tt +
+          (((V402 * ss + V302) * ss + V202) * ss + V102) * ss + V002;
+      specVolPcoeffs(1, K) =
           ((((V051 * tt + V141 * ss + V041) * tt + (V231 * ss + V131) * ss +
              V031) *
                 tt +
@@ -107,7 +109,7 @@ class TEOS10Poly75t {
               tt +
           ((((V501 * ss + V401) * ss + V301) * ss + V201) * ss + V101) * ss +
           V001;
-      vp(0, K) =
+      specVolPcoeffs(0, K) =
           (((((V060 * tt + V150 * ss + V050) * tt + (V240 * ss + V140) * ss +
               V040) *
                  tt +
@@ -130,11 +132,14 @@ class TEOS10Poly75t {
       const Real Pu = 1e4;
       Real pp       = P / Pu;
 
-      Real delta =
-          ((((vp(5, K) * pp + vp(4, K)) * pp + vp(3, K)) * pp + vp(2, K)) * pp +
-           vp(1, K)) *
-              pp +
-          vp(0, K);
+      Real delta = ((((specVolPcoeffs(5, K) * pp + specVolPcoeffs(4, K)) * pp +
+                      specVolPcoeffs(3, K)) *
+                         pp +
+                     specVolPcoeffs(2, K)) *
+                        pp +
+                    specVolPcoeffs(1, K)) *
+                       pp +
+                   specVolPcoeffs(0, K);
       // LOG_INFO("Value of delta: {}", delta);
       return delta;
    }
@@ -155,7 +160,7 @@ class TEOS10Poly75t {
       return v0;
    }
    //  private:
-   //    Array2DReal vp;
+   //    Array2DReal specVolPcoeffs;
 };
 
 /// Linear Equation of State

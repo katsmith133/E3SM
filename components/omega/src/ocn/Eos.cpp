@@ -7,7 +7,9 @@ namespace OMEGA {
 Eos *Eos::DefaultEos = nullptr;
 std::map<std::string, std::unique_ptr<Eos>> Eos::AllEos;
 
-TEOS10Poly75t::TEOS10Poly75t() { vp = Array2DReal("vp", 6, VecLength); }
+TEOS10Poly75t::TEOS10Poly75t() {
+   specVolPcoeffs = Array2DReal("specVolPcoeffs", 6, VecLength);
+}
 
 LinearEOS::LinearEOS() {}
 // const Real dRhodT, const Real dRhodS, const Real RhoT0S0) {
@@ -54,9 +56,10 @@ int Eos::init() {
       return Err;
    }
 
-   if (EosTypeStr == "Linear") {
+   if (EosTypeStr == "Linear" or EosTypeStr == "linear") {
       DefaultEos->eosChoice = EosType::Linear;
-   } else if (EosTypeStr == "teos10") {
+   } else if ((EosTypeStr == "teos10") or (EosTypeStr == "teos-10") or
+              (EosTypeStr == "TEOS-10")) {
       DefaultEos->eosChoice = EosType::TEOS10Poly75t;
    } else {
       LOG_CRITICAL("Eos: Unknown EosType requested");
