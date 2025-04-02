@@ -32,7 +32,6 @@ enum class EosType {
 /// TEOS10 75-term polynomial
 class TEOS10Poly75t {
  public:
-   // bool Enabled;
    Array2DReal specVolPcoeffs;
 
    /// constructor declaration
@@ -45,26 +44,19 @@ class TEOS10Poly75t {
                                    const Array2DReal &Pressure) const {
 
       const I4 KStart = KChunk * VecLength;
-      LOG_INFO("Value of KStart: {}", KStart);
-      LOG_INFO("Value of VecLength: {}", VecLength);
-      LOG_INFO("Value of KChunk: {}", KChunk);
       for (int KVec = 0; KVec < VecLength; ++KVec) {
          const I4 K = KStart + KVec;
-         LOG_INFO("Value of K: {}", K);
          calcPCoeffs(specVolPcoeffs, KVec, ConservativeTemperature(ICell, K),
                      AbsoluteSalinity(ICell, K));
-         // Array2DReal v0 = calcRefProfile(Pressure(ICell, K));
-         // Array2DReal delta = calcDelta(K, Pressure(ICell, K));
-         // LOG_INFO("Value of v0: {}", v0(0, 0));
-         // LOG_INFO("Value of delta: {}", delta(0, 0));
          SpecVol(ICell, K) = calcRefProfile(Pressure(ICell, K)) +
                              calcDelta(KVec, Pressure(ICell, K));
-         // LOG_INFO("Value of SpecVol: {}", SpecVol(ICell,K);
       }
    }
 
-   // assumes that we have called calcPCoeffs already -- I may want a check to
-   // be sure KOKKOS_FUNCTION void calcDisplacedSpecVol(const Array2DReal
+   // To be added:
+   // Note that it assumes that we have called calcPCoeffs already
+   //
+   // KOKKOS_FUNCTION void calcDisplacedSpecVol(const Array2DReal
    // &SpecVolDisplaced,
    //                                 I4 ICell, I4 KChunk,
    //                                 const Array2DReal &Pressure) const {
@@ -83,14 +75,12 @@ class TEOS10Poly75t {
    KOKKOS_FUNCTION void calcPCoeffs(const Array2DReal &specVolPcoeffs,
                                     const I4 K, const Real Ct,
                                     const Real Sa) const {
-      const Real SAu = 40 * 35.16504 / 35;
-      const Real CTu = 40.;
-      // const Real Pu     = 1e4;
+      const Real SAu    = 40 * 35.16504 / 35;
+      const Real CTu    = 40.;
       const Real DeltaS = 24.;
       GSW_SPECVOL_COEFFICIENTS;
-      const Real ss = Kokkos::sqrt((Sa + DeltaS) / SAu);
-      Real tt       = Ct / CTu;
-      // Real pp       = P / Pu;
+      const Real ss        = Kokkos::sqrt((Sa + DeltaS) / SAu);
+      Real tt              = Ct / CTu;
       specVolPcoeffs(5, K) = V005;
 
       specVolPcoeffs(4, K) = V014 * tt + V104 * ss + V004;
@@ -144,7 +134,6 @@ class TEOS10Poly75t {
                     specVolPcoeffs(1, K)) *
                        pp +
                    specVolPcoeffs(0, K);
-      // LOG_INFO("Value of delta: {}", delta);
       return delta;
    }
    KOKKOS_FUNCTION Real calcRefProfile(const Real P) const {
@@ -160,7 +149,6 @@ class TEOS10Poly75t {
       Real v0 =
           (((((V05 * pp + V04) * pp + V03) * pp + V02) * pp + V01) * pp + V00) *
           pp;
-      // LOG_INFO("Value of v0: {}", v0);
       return v0;
    }
    //  private:
@@ -170,7 +158,6 @@ class TEOS10Poly75t {
 /// Linear Equation of State
 class LinearEOS {
  public:
-   //   bool Enabled;
    Real dRhodT  = {-0.2};   // alpha in kg.m-3 degC-1
    Real dRhodS  = {0.8};    // beta in kg m-3
    Real RhoT0S0 = {1000.0}; // density at (T,S)=(0,0) in kg.m-3
@@ -178,14 +165,10 @@ class LinearEOS {
    /// constructor declaration
    LinearEOS();
 
-   //   /// The functor takes edge index, vertical chunk index, and arrays for
-   //   /// normalized relative vorticity, normalized planetary vorticity, layer
-   //   /// thickness on edges, and normal velocity on edges as inputs,
-   //   /// outputs the tendency array
-   //   KOKKOS_FUNCTION Real operator()(Real S, Real T, Real P) const {
-   //      Real SpecVol = 1.0 / (Rho_T0_S0 + (dRho_dT * T + dRho_dS * S));
-   //      return SpecVol;
-   //   }
+   //   The functor takes the full arrays of specific volume (inout),
+   //   the indices ICell and KChunk, and the ocean tracers (conservative)
+   //   temperature, and (absolute) salinity as inputs, and outputs the
+   //   linear specific volume.
 
    KOKKOS_FUNCTION void operator()(const Array2DReal &SpecVol, I4 ICell,
                                    I4 KChunk,
@@ -248,27 +231,7 @@ class Eos {
    //   EosType eosChoice;
    I4 NCellsAll;
    I4 NChunks;
-   // Real lineardRhodT;
-   // Real lineardRhodS;
-   // Real linearRhoT0S0;
-
-   // main methods for calculation
-   // KOKKOS_FUNCTION void computeSpecVolTEOS10Poly75t(const Array2DReal
-   // &SpecVol, I4 ICell,
-   //                                  I4 KChunk,
-   //                                  const Array2DReal
-   //                                  &ConservativeTemperature, const
-   //                                  Array2DReal &AbsoluteSalinity, const
-   //                                  Array2DReal &Pressure) const;
-   // KOKKOS_FUNCTION void computeSpecVolLinear(const Array2DReal &SpecVol, I4
-   // ICell, I4 KChunk,
-   //                           const Array2DReal &ConservativeTemperature,
-   //                           const Array2DReal &AbsoluteSalinity,
-   //                           const Array2DReal &Pressure) const;
    // void truncateTempSal();
-   // void computeSpecVolDelta();
-   // void computeSpecVolRefProfile();
-
    TEOS10Poly75t computeSpecVolTEOS10Poly75t;
    LinearEOS computeSpecVolLinear;
 

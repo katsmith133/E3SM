@@ -55,6 +55,8 @@ double Sa               = 30.;
 double Ct               = 10.;
 double P                = 1000.;
 const Real RTol         = 1e-10;
+// expected value for Linear eos (and default parameters)
+const Real LinearExpValue = 0.0009784735812133072;
 
 //------------------------------------------------------------------------------
 // The initialization routine for Eos testing. It calls various
@@ -72,7 +74,7 @@ I4 initEosTest(const std::string &mesh) {
    MPI_Comm DefComm = DefEnv->getComm();
 
    initLogging(DefEnv);
-   LOG_INFO("… 4 in initEosTest");
+   LOG_INFO("… in initEosTest");
 
    // Open config file
    Config("Omega");
@@ -125,9 +127,8 @@ I4 initEosTest(const std::string &mesh) {
    return Err;
 }
 
-int testEos() {
+int testEosMapping() {
    int Err = 0;
-   LOG_INFO("… in EosTest");
    // test initialization
    int EosErr = Eos::init();
    if (EosErr != 0) {
@@ -148,72 +149,8 @@ int testEos() {
 
    const auto *Mesh = HorzMesh::getDefault();
    // test creation of another Eos
-   Config *Options = Config::getOmegaConfig();
-   Eos::create("TestEos", Mesh, 60); // MODIFY THIS
+   Eos::create("TestEos", Mesh, NVertLevels);
 
-   // test using Eos to calc specific volume
-   Eos *TestEos       = Eos::get("TestEos");
-   TestEos->eosChoice = EosType::TEOS10Poly75t;
-   // TestEos->eosChoice = EosType::Linear;
-
-   Array2DReal Sarray = Array2DReal("Sarray", Mesh->NCellsAll, 60);
-   Array2DReal Tarray = Array2DReal("Tarray", Mesh->NCellsAll, 60);
-   Array2DReal Parray = Array2DReal("Parray", Mesh->NCellsAll, 60);
-
-   // Use Kokkos::deep_copy to fill the entire view with the ref value
-   Kokkos::deep_copy(Sarray, Sa);
-   Kokkos::deep_copy(Tarray, Ct);
-   Kokkos::deep_copy(Parray, P);
-   Kokkos::deep_copy(TestEos->SpecVol, 0.0);
-   TestEos->computeSpecVol(TestEos->SpecVol, Tarray, Sarray, Parray);
-   LOG_INFO("EosTest: produced SpecVol from Eos");
-   LOG_INFO("Size of SpecVol: {}, {}", Mesh->NCellsAll, 60);
-   LOG_INFO("Value of SpecVol(0,0): {}", TestEos->SpecVol(0, 0));
-   LOG_INFO("Value of SpecVol(200,30): {}", TestEos->SpecVol(200, 30));
-   LOG_INFO("Value of SpecVol(1000,50): {}", TestEos->SpecVol(1000, 50));
-
-   Real LinearExpValue = 0.0009784735812133072;
-   Real Threshold      = VolRefReal;
-   int numMismatches   = 0;
-   const Real RTolLoc  = 1e-10;
-   bool allMatch       = true;
-   LOG_INFO("Loop extent: {}, {}", Mesh->NCellsAll, 60);
-   // for (int i = 0; i < Mesh->NCellsAll; ++i) {
-   //    for (int j = 0; j < 60; ++j) {
-   //       if (!isApprox(TestEos->SpecVol(i, j), Threshold, RTolLoc)) {
-   //          allMatch = false;
-   //          Err++;
-   //          LOG_ERROR("EosTest: SpecVol isApprox FAIL, "
-   //                 "expected {}, got {} ",
-   //                  Threshold, TestEos->SpecVol(i, j));
-   //          break; // Exit inner loop if any element fails
-   //       }
-   //    }
-   //    if (!allMatch)
-   //       break; // Exit outer loop early if needed
-   // }
-   Kokkos::parallel_reduce(
-       "CheckSpecVolMatrix",
-       Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {Mesh->NCellsAll, 60}),
-       KOKKOS_LAMBDA(const int i, const int j, int &localCount) {
-          if (!isApprox(TestEos->SpecVol(i, j), Threshold, RTolLoc)) {
-             localCount++;
-          }
-       },
-       numMismatches);
-
-   bool allMatch2 = (numMismatches == 0);
-   if (!allMatch2) {
-      Err++;
-      LOG_ERROR("EosTest: SpecVol isApprox FAIL, "
-                "expected {}, got {} mismatches",
-                Threshold, numMismatches);
-   }
-   if (Err == 0) {
-      LOG_INFO("EosTest SpecVolCalc: PASS");
-   }
-
-   // test retrievel of another Eos
    if (Eos::get("TestEos")) {
       LOG_INFO("EosTest: Non-default Eos retrieval PASS");
    } else {
@@ -224,45 +161,131 @@ int testEos() {
    // test erase
    Eos::erase("TestEos");
 
-   // if (Eos::get("TestEos")) {
-   //    Err++;
-   //    LOG_INFO("EosTest: Non-default Eos erase FAIL");
-   // } else {
-   //    LOG_INFO("EosTest: Non-default Eos erase PASS");
-   // }
+   if (Eos::get("TestEos")) {
+      Err++;
+      LOG_INFO("EosTest: Non-default Eos erase FAIL");
+   } else {
+      LOG_INFO("EosTest: Non-default Eos erase PASS");
+   }
 
-   Eos::clear();
+   // Eos::clear();
 
+   return Err;
+}
+
+int testEosLinear() {
+   int Err          = 0;
+   const auto *Mesh = HorzMesh::getDefault();
+   // create Eos to test
+   Eos::create("LinearEos", Mesh, NVertLevels);
+   Eos *TestEos       = Eos::get("LinearEos");
+   TestEos->eosChoice = EosType::Linear;
+   Real Threshold     = LinearExpValue;
+
+   // create ocean state array
+   Array2DReal Sarray = Array2DReal("Sarray", Mesh->NCellsAll, NVertLevels);
+   Array2DReal Tarray = Array2DReal("Tarray", Mesh->NCellsAll, NVertLevels);
+   Array2DReal Parray = Array2DReal("Parray", Mesh->NCellsAll, NVertLevels);
+   // Use Kokkos::deep_copy to fill the entire view with the ref value
+   deepCopy(Sarray, Sa);
+   deepCopy(Tarray, Ct);
+   deepCopy(Parray, P);
+   deepCopy(TestEos->SpecVol, 0.0);
+
+   // Key calculation
+   TestEos->computeSpecVol(TestEos->SpecVol, Tarray, Sarray, Parray);
+   // LOG_INFO("EosTest, testEosLinear: produced SpecVol from Eos");
+
+   // check on all array values
+   int numMismatches = 0;
+   Kokkos::parallel_reduce(
+       "CheckSpecVolMatrix-linear",
+       Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0},
+                                              {Mesh->NCellsAll, NVertLevels}),
+       KOKKOS_LAMBDA(const int i, const int j, int &localCount) {
+          if (!isApprox(TestEos->SpecVol(i, j), Threshold, RTol)) {
+             localCount++;
+          }
+       },
+       numMismatches);
+
+   bool allMatch = (numMismatches == 0);
+   if (!allMatch) {
+      Err++;
+      LOG_ERROR("EosTest: SpecVol Linear isApprox FAIL, "
+                "expected {}, got {} mismatches",
+                Threshold, numMismatches);
+   }
+   if (Err == 0) {
+      LOG_INFO("EosTest SpecVolCalc Linear: PASS");
+   }
+
+   Eos::erase("LinearEos");
+   return Err;
+}
+
+int testEosTeos10() {
+   int Err          = 0;
+   const auto *Mesh = HorzMesh::getDefault();
+   // create Eos to test
+   Eos::create("TeosEos", Mesh, NVertLevels);
+   Eos *TestEos       = Eos::get("TeosEos");
+   TestEos->eosChoice = EosType::TEOS10Poly75t;
+   Real Threshold     = VolRefReal;
+
+   // create ocean state array
+   Array2DReal Sarray = Array2DReal("Sarray", Mesh->NCellsAll, NVertLevels);
+   Array2DReal Tarray = Array2DReal("Tarray", Mesh->NCellsAll, NVertLevels);
+   Array2DReal Parray = Array2DReal("Parray", Mesh->NCellsAll, NVertLevels);
+   // Use Kokkos::deep_copy to fill the entire view with the ref value
+   deepCopy(Sarray, Sa);
+   deepCopy(Tarray, Ct);
+   deepCopy(Parray, P);
+   deepCopy(TestEos->SpecVol, 0.0);
+
+   // Key calculation
+   TestEos->computeSpecVol(TestEos->SpecVol, Tarray, Sarray, Parray);
+   // LOG_INFO("EosTest - testEosTeos: produced SpecVol from Eos");
+
+   // check on all array values
+   int numMismatches = 0;
+   // LOG_INFO("Loop extent: {}, {}", Mesh->NCellsAll, NVertLevels);
+   Kokkos::parallel_reduce(
+       "CheckSpecVolMatrix-teos",
+       Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0},
+                                              {Mesh->NCellsAll, NVertLevels}),
+       KOKKOS_LAMBDA(const int i, const int j, int &localCount) {
+          if (!isApprox(TestEos->SpecVol(i, j), Threshold, RTol)) {
+             localCount++;
+          }
+       },
+       numMismatches);
+
+   bool allMatch = (numMismatches == 0);
+   if (!allMatch) {
+      Err++;
+      LOG_ERROR("EosTest: Teos SpecVol isApprox FAIL, "
+                "expected {}, got {} mismatches",
+                Threshold, numMismatches);
+   }
+   if (Err == 0) {
+      LOG_INFO("EosTest SpecVolCalc TEOS-10: PASS");
+   }
+
+   Eos::erase("TeosEos");
    return Err;
 }
 
 void finalizeEosTest() {
+   Eos::clear();
    Tracers::clear();
-   // AuxiliaryState::clear();
    HorzMesh::clear();
    Halo::clear();
    TimeStepper::clear();
    Decomp::clear();
-   // FieldGroup::clear();
    Field::clear();
    Dimension::clear();
    MachEnv::removeAll();
-}
-
-int eosTest(const std::string &MeshFile = "OmegaMesh.nc") {
-   int Err = initEosTest(MeshFile);
-   if (Err != 0) {
-      LOG_CRITICAL("EosTest: Error initializing");
-   }
-   const auto &Mesh = HorzMesh::getDefault();
-   Err += testEos();
-
-   if (Err == 0) {
-      LOG_INFO("EosTest: Successful completion");
-   }
-   finalizeEosTest();
-
-   return Err;
 }
 
 int gswcSpecVolCheckValue() {
@@ -270,8 +293,8 @@ int gswcSpecVolCheckValue() {
    const Real RTol = 1e-10;
 
    double SpecVol = gsw_specvol(Sa, Ct, P);
-   LOG_INFO("gswcSpecVolCheckValue: produced SpecVol from GSW-C module");
-   LOG_INFO("Value of SpecVol: {}", SpecVol);
+   //  LOG_INFO("gswcSpecVolCheckValue: produced SpecVol from GSW-C module");
+   //  LOG_INFO("Value of SpecVol: {}", SpecVol);
    bool Check = isApprox(SpecVol, VolRefReal, RTol);
    if (!Check) {
       Err++;
@@ -291,8 +314,8 @@ int test_fetch_coeff() {
    double ExpVal   = 0.0010769995862;
    const Real RTol = 1e-10;
    GSW_SPECVOL_COEFFICIENTS;
-   LOG_INFO("EosTest: called GSW_SPECVOL_COEFFICIENTS");
-   LOG_INFO("Value of V000: {}", V000);
+   // LOG_INFO("EosTest: called GSW_SPECVOL_COEFFICIENTS");
+   // LOG_INFO("Value of V000: {}", V000);
    if (!isApprox(V000, ExpVal, RTol)) {
       Err++;
       LOG_ERROR("EosTest: Coeff V000 isApprox FAIL, expected {}, got {}",
@@ -312,8 +335,8 @@ int poly75tDeltaCheckValue() {
    TEOS10Poly75t specvolpoly75t;
    specvolpoly75t.calcPCoeffs(specvolpoly75t.specVolPcoeffs, K, Ct, Sa);
    Real Delta = specvolpoly75t.calcDelta(K, P);
-   LOG_INFO("Teos10 poly75tDeltaCheckValue: produced delta from poly75t");
-   LOG_INFO("Value of Delta: {}", Delta);
+   // LOG_INFO("Teos10 poly75tDeltaCheckValue: produced delta from poly75t");
+   // LOG_INFO("Value of Delta: {}", Delta);
    bool Check = isApprox(Delta, DeltaRefReal, RTol);
    if (!Check) {
       Err++;
@@ -344,8 +367,8 @@ int poly75tSpecVolCheckValue() {
 
    TEOS10Poly75t specvolpoly75t;
    specvolpoly75t(SpecVol, ICell, K, Tarray, Sarray, Parray);
-   LOG_INFO("Teos10 poly75tSpecVolCheckValue: produced SpecVol from poly75t");
-   LOG_INFO("Value of SpecVol: {}", SpecVol(0, 0));
+   // LOG_INFO("Teos10 poly75tSpecVolCheckValue: produced SpecVol from
+   // poly75t"); LOG_INFO("Value of SpecVol: {}", SpecVol(0, 0));
    bool Check = isApprox(SpecVol(0, 0), VolRefReal, RTol);
    if (!Check) {
       Err++;
@@ -359,42 +382,8 @@ int poly75tSpecVolCheckValue() {
    return Err;
 }
 
-// int poly75tSpecVolCheckValue2() {
-//    int Err         = 0;
-//    const Real RTol = 1e-10;
-//    Array2DReal Sarray = Array2DReal("Sarray", 1, 1);
-//    Array2DReal Tarray = Array2DReal("Tarray", 1, 1);
-//    Array2DReal Parray = Array2DReal("Parray", 1, 1);
-//    const int K     = 0;
-//    const int ICell = 0;
-//    Array2DReal SpecVol = Array2DReal("SpecVol", 1, 1);
-//
-//    Sarray(0, 0)  = Sa;
-//    Tarray(0, 0)  = Ct;
-//    Parray(0, 0)  = P;
-//    SpecVol(0, 0) = 0.0;
-//
-//    Eos testEos;
-//    EosType testType;
-//    testEos.eosChoice = testType::Linear;
-//    // TEOS10Poly75t specvolpoly75t;
-//    testEos.computeSpecVol(SpecVol, Tarray, Sarray, Parray);
-//    LOG_INFO("Teos10 poly75tSpecVolCheckValue: produced SpecVol from
-//    poly75t"); LOG_INFO("Value of SpecVol: {}", SpecVol(0, 0)); bool Check =
-//    isApprox(SpecVol(0, 0), VolRefReal, RTol); if (!Check) {
-//       Err++;
-//       LOG_ERROR("Teos10 poly75tSpecVolCheckValue: SpecVol isApprox FAIL, "
-//                 "expected {}, got {}",
-//                 VolRefReal, SpecVol(0, 0));
-//    }
-//    if (Err == 0) {
-//       LOG_INFO("Teos10 poly75tSpecVolCheckValue: PASS");
-//    }
-//    return Err;
-
 int linearSpecVolCheckValue() {
    int Err             = 0;
-   const Real RTol     = 1e-10;
    const Real RTol2    = 1e-2; // (>> machine precision)
    Array2DReal Sarray  = Array2DReal("Sarray", 1, 1);
    Array2DReal Tarray  = Array2DReal("Tarray", 1, 1);
@@ -408,23 +397,23 @@ int linearSpecVolCheckValue() {
 
    LinearEOS specvollinear;
    specvollinear(SpecVol, ICell, K, Tarray, Sarray);
-   LOG_INFO("linearSpecVolCheckValue: produced SpecVol from linear EOS");
-   LOG_INFO("Value of SpecVol: {}", SpecVol(0, 0));
+   // LOG_INFO("linearSpecVolCheckValue: produced SpecVol from linear EOS");
+   // LOG_INFO("Value of SpecVol: {}", SpecVol(0, 0));
    bool Check      = isApprox(SpecVol(0, 0), VolRefReal, RTol);  // expect False
    bool CheckClose = isApprox(SpecVol(0, 0), VolRefReal, RTol2); // expect True
    if (Check) {
       Err++;
       LOG_ERROR("linearSpecVolCheckValue: SpecVol Linear is undistinguishable "
                 "from TEOS10 Ref Value");
-   } else if (!Check) {
-      LOG_INFO("linearSpecVolCheckValue: SpecVol TEOS10 {}, got {} with Linear",
-               VolRefReal, SpecVol(0, 0));
    }
-   if (CheckClose) {
-      LOG_INFO(
-          "linearSpecVolCheckValue: SpecVol TEOS10 and Linear are within {}",
-          RTol2);
-   } else if (!CheckClose) {
+   // else if (!Check) {
+   // LOG_INFO("linearSpecVolCheckValue: SpecVol TEOS10 {}, got {} with Linear",
+   //          VolRefReal, SpecVol(0, 0));
+   // }
+   // LOG_INFO(
+   //     "linearSpecVolCheckValue: SpecVol TEOS10 and Linear are within {}",
+   //     RTol2);
+   if (!CheckClose) {
       Err++;
       LOG_ERROR("linearSpecVolCheckValue: SpecVol TEOS10 and Linear are NOT "
                 "close. Check input values");
@@ -468,7 +457,7 @@ int linearDensityLinearityTest() {
    Real DRhoT  = 1. / SpecVol2(0, 0) - 1. / SpecVol1(0, 0);
    Real DRhoS  = 1. / SpecVol3(0, 0) - 1. / SpecVol1(0, 0);
    Real DRhoTS = 1. / SpecVol4(0, 0) - 1. / SpecVol1(0, 0);
-   LOG_INFO("linearDensityLinearityTest: produced SpecVol from linear EOS");
+   // LOG_INFO("linearDensityLinearityTest: produced SpecVol from linear EOS");
    bool Check1 = isApprox(DRhoS, ExpDS, RTol);
    if (!Check1) {
       Err++;
@@ -487,34 +476,58 @@ int linearDensityLinearityTest() {
       LOG_ERROR("linearDensityLinearityTest: Sum(DRho) {}, DRhoTS {}",
                 DRhoS + DRhoT, DRhoTS);
    }
-   LOG_INFO("linearDensityLinearityTest: Sum(DRho) is undistinguishable from"
-            "DRhoTS");
+   // LOG_INFO("linearDensityLinearityTest: Sum(DRho) is undistinguishable from"
+   //          "DRhoTS");
    if (Err == 0) {
       LOG_INFO("linearDensityLinearityTest: PASS");
    }
    return Err;
 }
 
-//------------------------------------------------------------------------------
-// The test driver for Eos testing
+// the main test (all in one to have the same log)
+// Single value tests:
 // --> one test calls the external GSW-C library
 // and compares the specific volume to the published value
-// --> next tests call the local POly75t TEOS-10 calc
+// --> next tests call the local Poly75t TEOS-10 calc
 // --> next tests call the linear Eos
+// Full array tests:
+// --> one tests the initialization/retrieval of Eos
+// --> next checks the value on a Eos with linear option
+// --> next checks the value on a Eos with Teos-10 option
+int eosTest(const std::string &MeshFile = "OmegaMesh.nc") {
+   int Err = initEosTest(MeshFile);
+   if (Err != 0) {
+      LOG_CRITICAL("EosTest: Error initializing");
+   }
+   const auto &Mesh = HorzMesh::getDefault();
+   LOG_INFO("Single value checks:");
+   Err += gswcSpecVolCheckValue();
+   Err += poly75tDeltaCheckValue();
+   Err += poly75tSpecVolCheckValue();
+   Err += linearSpecVolCheckValue();
+   Err += linearDensityLinearityTest();
+   LOG_INFO("Full array checks:");
+   Err += testEosMapping();
+   Err += testEosLinear();
+   Err += testEosTeos10();
+
+   if (Err == 0) {
+      LOG_INFO("EosTest: Successful completion");
+   }
+   finalizeEosTest();
+
+   return Err;
+}
+
+//------------------------------------------------------------------------------
+// The test driver for Eos testing
 int main(int argc, char *argv[]) {
 
    int RetVal = 0;
 
    MPI_Init(&argc, &argv);
    Kokkos::initialize(argc, argv);
-   {
-      RetVal += gswcSpecVolCheckValue();
-      RetVal += poly75tDeltaCheckValue();
-      RetVal += poly75tSpecVolCheckValue();
-      RetVal += linearSpecVolCheckValue();
-      RetVal += linearDensityLinearityTest();
-      RetVal += eosTest();
-   }
+   { RetVal += eosTest(); }
    Kokkos::finalize();
    MPI_Finalize();
 

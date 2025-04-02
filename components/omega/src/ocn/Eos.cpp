@@ -12,10 +12,6 @@ TEOS10Poly75t::TEOS10Poly75t() {
 }
 
 LinearEOS::LinearEOS() {}
-// const Real dRhodT, const Real dRhodS, const Real RhoT0S0) {
-// this->dRhodT=dRhodT;
-// this->dRhodS=dRhodS;
-// this->RhoT0S0=RhoT0S0;}
 
 Eos::Eos(const std::string &Name, ///< [in] Name for eos object
          const HorzMesh *Mesh,    ///< [in] Horizontal mesh
@@ -87,43 +83,8 @@ int Eos::init() {
       return Err;
    }
 
-   // LOG_INFO("set default values {}, {}, {}", DefaultEos->lineardRhodT,
-   //          DefaultEos->lineardRhodS, DefaultEos->linearRhoT0S0);
-
-   // DefaultEos->computeSpecVolLinear=computeSpecVolLinear(DefaultEos->lineardRhodT,
-   //          DefaultEos->lineardRhodS, DefaultEos->linearRhoT0S0);
    return Err;
 } // end init
-
-// KOKKOS_FUNCTION
-// KOKKOS_FUNCTION void
-// Eos::computeSpecVolLinear(const Array2DReal &SpecVol, I4 ICell, I4 KChunk,
-//                           const Array2DReal &ConservativeTemperature,
-//                           const Array2DReal &AbsoluteSalinity,
-//                           const Array2DReal &Pressure) const {
-//
-//    const I4 KStart = KChunk * VecLength;
-//    for (int KVec = 0; KVec < VecLength; ++KVec) {
-//       const I4 K = KStart + KVec;
-//       SpecVol(ICell, K) =
-//           1.0 /
-//           (linearRhoT0S0 + (lineardRhodT * ConservativeTemperature(ICell, K)
-//           +
-//                             lineardRhodS * AbsoluteSalinity(ICell, K)));
-//    }
-// }
-//
-// KOKKOS_FUNCTION void Eos::computeSpecVolTEOS10Poly75t(
-//     const Array2DReal &SpecVol, I4 ICell, I4 KChunk,
-//     const Array2DReal &ConservativeTemperature,
-//     const Array2DReal &AbsoluteSalinity, const Array2DReal &Pressure) const {
-//
-//    const I4 KStart = KChunk * VecLength;
-//    for (int KVec = 0; KVec < VecLength; ++KVec) {
-//       const I4 K        = KStart + KVec;
-//       SpecVol(ICell, K) = 1.0;
-//    }
-// }
 
 void Eos::computeSpecVol(const Array2DReal &SpecVol,
                          const Array2DReal &ConservativeTemperature,
@@ -132,7 +93,7 @@ void Eos::computeSpecVol(const Array2DReal &SpecVol,
    OMEGA_SCOPE(LocSpecVol, SpecVol);
    OMEGA_SCOPE(LocComputeSpecVolLinear, computeSpecVolLinear);
    OMEGA_SCOPE(LocComputeSpecVolTEOS10Poly75t, computeSpecVolTEOS10Poly75t);
-   Kokkos::deep_copy(LocSpecVol, 0.0);
+   deepCopy(LocSpecVol, 0.0);
    if (eosChoice == EosType::Linear) {
       parallelFor(
           "eos-linear", {NCellsAll, NChunks},
