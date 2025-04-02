@@ -8,8 +8,7 @@ Eos *Eos::DefaultEos = nullptr;
 std::map<std::string, std::unique_ptr<Eos>> Eos::AllEos;
 
 TEOS10Poly75t::TEOS10Poly75t() {
-   specVolPcoeffs =
-       Array2DReal("specVolPcoeffs", 6, 60); // modify this to nvertLevels
+   specVolPcoeffs = Array2DReal("specVolPcoeffs", 6, VecLength);
 }
 
 LinearEOS::LinearEOS() {}

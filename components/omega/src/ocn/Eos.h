@@ -45,16 +45,20 @@ class TEOS10Poly75t {
                                    const Array2DReal &Pressure) const {
 
       const I4 KStart = KChunk * VecLength;
+      LOG_INFO("Value of KStart: {}", KStart);
+      LOG_INFO("Value of VecLength: {}", VecLength);
+      LOG_INFO("Value of KChunk: {}", KChunk);
       for (int KVec = 0; KVec < VecLength; ++KVec) {
          const I4 K = KStart + KVec;
-         calcPCoeffs(specVolPcoeffs, K, ConservativeTemperature(ICell, K),
+         LOG_INFO("Value of K: {}", K);
+         calcPCoeffs(specVolPcoeffs, KVec, ConservativeTemperature(ICell, K),
                      AbsoluteSalinity(ICell, K));
          // Array2DReal v0 = calcRefProfile(Pressure(ICell, K));
          // Array2DReal delta = calcDelta(K, Pressure(ICell, K));
          // LOG_INFO("Value of v0: {}", v0(0, 0));
          // LOG_INFO("Value of delta: {}", delta(0, 0));
          SpecVol(ICell, K) = calcRefProfile(Pressure(ICell, K)) +
-                             calcDelta(K, Pressure(ICell, K));
+                             calcDelta(KVec, Pressure(ICell, K));
          // LOG_INFO("Value of SpecVol: {}", SpecVol(ICell,K);
       }
    }
