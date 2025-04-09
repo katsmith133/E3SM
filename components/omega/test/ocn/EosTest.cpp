@@ -20,8 +20,6 @@
 #include "MachEnv.h"
 #include "OceanTestCommon.h"
 #include "OmegaKokkos.h"
-#include "TimeStepper.h"
-#include "Tracers.h"
 #include "mpi.h"
 
 // added for debug
@@ -34,34 +32,21 @@
 
 using namespace OMEGA;
 
-// struct TestSetup {
-//    Real Radius = 6371220;
-//
-//    KOKKOS_FUNCTION Real layerThickness(Real Lon, Real Lat) const {
-//       return (2 + std::cos(Lon) * std::pow(std::cos(Lat), 4));
-//    }
-//
-//    KOKKOS_FUNCTION Real tracer(Real Lon, Real Lat) const {
-//       return (2 - std::cos(Lon) * std::pow(std::cos(Lat), 4));
-//    }
-// };
-
 constexpr Geometry Geom   = Geometry::Spherical;
 constexpr int NVertLevels = 60;
 // published values (TEOS-10) to test against
-const Real DeltaRefReal = 0.0009776149797;
-const Real VolRefReal   = 0.0009732819628;
-double Sa               = 30.;
-double Ct               = 10.;
-double P                = 1000.;
-const Real RTol         = 1e-10;
+const Real TeosExpValueDelta = 0.0009776149797;
+const Real TeosExpValueVol   = 0.0009732819628;
+double Sa                    = 30.;
+double Ct                    = 10.;
+double P                     = 1000.;
+const Real RTol              = 1e-10;
 // expected value for Linear eos (and default parameters)
 const Real LinearExpValue = 0.0009784735812133072;
 
 //------------------------------------------------------------------------------
 // The initialization routine for Eos testing. It calls various
 // init routines, including the creation of the default decomposition.
-// Not used now
 I4 initEosTest(const std::string &mesh) {
 
    I4 Err = 0;
@@ -84,45 +69,25 @@ I4 initEosTest(const std::string &mesh) {
       return Err;
    }
 
-   int TimeStepperErr = TimeStepper::init1();
-   if (TimeStepperErr != 0) {
-      Err++;
-      LOG_ERROR("TendenciesTest: error initializing default time stepper");
-   }
-
    int IOErr = IO::init(DefComm);
    if (IOErr != 0) {
       Err++;
-      LOG_ERROR("TendenciesTest: error initializing parallel IO");
+      LOG_ERROR("EosTest: error initializing parallel IO");
    }
 
    int DecompErr = Decomp::init(mesh);
    if (DecompErr != 0) {
       Err++;
-      LOG_ERROR("TendenciesTest: error initializing default decomposition");
-   }
-
-   int HaloErr = Halo::init();
-   if (HaloErr != 0) {
-      Err++;
-      LOG_ERROR("TendenciesTest: error initializing default halo");
+      LOG_ERROR("EosTest: error initializing default decomposition");
    }
 
    int MeshErr = HorzMesh::init();
    if (MeshErr != 0) {
       Err++;
-      LOG_ERROR("TendenciesTest: error initializing default mesh");
-   }
-
-   int TracerErr = Tracers::init();
-   if (TracerErr != 0) {
-      Err++;
-      LOG_ERROR("TendenciesTest: error initializing tracer infrastructure");
+      LOG_ERROR("EosTest: error initializing default mesh");
    }
 
    const auto &Mesh = HorzMesh::getDefault();
-   std::shared_ptr<Dimension> VertDim =
-       Dimension::create("NVertLevels", NVertLevels);
 
    return Err;
 }
@@ -180,7 +145,6 @@ int testEosLinear() {
    Eos::create("LinearEos", Mesh, NVertLevels);
    Eos *TestEos       = Eos::get("LinearEos");
    TestEos->eosChoice = EosType::Linear;
-   Real Threshold     = LinearExpValue;
 
    // create ocean state array
    Array2DReal Sarray = Array2DReal("Sarray", Mesh->NCellsAll, NVertLevels);
@@ -203,7 +167,7 @@ int testEosLinear() {
        Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0},
                                               {Mesh->NCellsAll, NVertLevels}),
        KOKKOS_LAMBDA(const int i, const int j, int &localCount) {
-          if (!isApprox(TestEos->SpecVol(i, j), Threshold, RTol)) {
+          if (!isApprox(TestEos->SpecVol(i, j), LinearExpValue, RTol)) {
              localCount++;
           }
        },
@@ -214,7 +178,7 @@ int testEosLinear() {
       Err++;
       LOG_ERROR("EosTest: SpecVol Linear isApprox FAIL, "
                 "expected {}, got {} mismatches",
-                Threshold, numMismatches);
+                LinearExpValue, numMismatches);
    }
    if (Err == 0) {
       LOG_INFO("EosTest SpecVolCalc Linear: PASS");
@@ -231,7 +195,6 @@ int testEosTeos10() {
    Eos::create("TeosEos", Mesh, NVertLevels);
    Eos *TestEos       = Eos::get("TeosEos");
    TestEos->eosChoice = EosType::TEOS10Poly75t;
-   Real Threshold     = VolRefReal;
 
    // create ocean state array
    Array2DReal Sarray = Array2DReal("Sarray", Mesh->NCellsAll, NVertLevels);
@@ -255,7 +218,7 @@ int testEosTeos10() {
        Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0},
                                               {Mesh->NCellsAll, NVertLevels}),
        KOKKOS_LAMBDA(const int i, const int j, int &localCount) {
-          if (!isApprox(TestEos->SpecVol(i, j), Threshold, RTol)) {
+          if (!isApprox(TestEos->SpecVol(i, j), TeosExpValueVol, RTol)) {
              localCount++;
           }
        },
@@ -266,7 +229,7 @@ int testEosTeos10() {
       Err++;
       LOG_ERROR("EosTest: Teos SpecVol isApprox FAIL, "
                 "expected {}, got {} mismatches",
-                Threshold, numMismatches);
+                TeosExpValueVol, numMismatches);
    }
    if (Err == 0) {
       LOG_INFO("EosTest SpecVolCalc TEOS-10: PASS");
@@ -280,8 +243,6 @@ void finalizeEosTest() {
    Eos::clear();
    Tracers::clear();
    HorzMesh::clear();
-   Halo::clear();
-   TimeStepper::clear();
    Decomp::clear();
    Field::clear();
    Dimension::clear();
@@ -295,12 +256,12 @@ int gswcSpecVolCheckValue() {
    double SpecVol = gsw_specvol(Sa, Ct, P);
    //  LOG_INFO("gswcSpecVolCheckValue: produced SpecVol from GSW-C module");
    //  LOG_INFO("Value of SpecVol: {}", SpecVol);
-   bool Check = isApprox(SpecVol, VolRefReal, RTol);
+   bool Check = isApprox(SpecVol, TeosExpValueVol, RTol);
    if (!Check) {
       Err++;
       LOG_ERROR(
           "gswcSpecVolCheckValue: SpecVol isApprox FAIL, expected {}, got {}",
-          VolRefReal, SpecVol);
+          TeosExpValueVol, SpecVol);
    }
    if (Err == 0) {
       LOG_INFO("gswcSpecVolCheckValue: PASS");
@@ -308,11 +269,10 @@ int gswcSpecVolCheckValue() {
    return Err;
 }
 
-// intermediate test: not used for now
-int test_fetch_coeff() {
-   int Err         = 0;
-   double ExpVal   = 0.0010769995862;
-   const Real RTol = 1e-10;
+// intermediate test accessing the coefficients
+int fetchCoeff() {
+   int Err       = 0;
+   double ExpVal = 0.0010769995862;
    GSW_SPECVOL_COEFFICIENTS;
    // LOG_INFO("EosTest: called GSW_SPECVOL_COEFFICIENTS");
    // LOG_INFO("Value of V000: {}", V000);
@@ -328,21 +288,20 @@ int test_fetch_coeff() {
 }
 
 int poly75tDeltaCheckValue() {
-   int Err         = 0;
-   const Real RTol = 1e-10;
-   const int K     = 0;
+   int Err     = 0;
+   const int K = 0;
 
    TEOS10Poly75t specvolpoly75t;
    specvolpoly75t.calcPCoeffs(specvolpoly75t.specVolPcoeffs, K, Ct, Sa);
    Real Delta = specvolpoly75t.calcDelta(K, P);
    // LOG_INFO("Teos10 poly75tDeltaCheckValue: produced delta from poly75t");
    // LOG_INFO("Value of Delta: {}", Delta);
-   bool Check = isApprox(Delta, DeltaRefReal, RTol);
+   bool Check = isApprox(Delta, TeosExpValueDelta, RTol);
    if (!Check) {
       Err++;
       LOG_ERROR("Teos10 poly75tDeltaCheckValue: Delta isApprox FAIL, expected "
                 "{}, got {}",
-                DeltaRefReal, Delta);
+                TeosExpValueDelta, Delta);
    }
    if (Err == 0) {
       LOG_INFO("Teos10 poly75tDeltaCheckValue: PASS");
@@ -369,12 +328,12 @@ int poly75tSpecVolCheckValue() {
    specvolpoly75t(SpecVol, ICell, K, Tarray, Sarray, Parray);
    // LOG_INFO("Teos10 poly75tSpecVolCheckValue: produced SpecVol from
    // poly75t"); LOG_INFO("Value of SpecVol: {}", SpecVol(0, 0));
-   bool Check = isApprox(SpecVol(0, 0), VolRefReal, RTol);
+   bool Check = isApprox(SpecVol(0, 0), TeosExpValueVol, RTol);
    if (!Check) {
       Err++;
       LOG_ERROR("Teos10 poly75tSpecVolCheckValue: SpecVol isApprox FAIL, "
                 "expected {}, got {}",
-                VolRefReal, SpecVol(0, 0));
+                TeosExpValueVol, SpecVol(0, 0));
    }
    if (Err == 0) {
       LOG_INFO("Teos10 poly75tSpecVolCheckValue: PASS");
@@ -399,20 +358,14 @@ int linearSpecVolCheckValue() {
    specvollinear(SpecVol, ICell, K, Tarray, Sarray);
    // LOG_INFO("linearSpecVolCheckValue: produced SpecVol from linear EOS");
    // LOG_INFO("Value of SpecVol: {}", SpecVol(0, 0));
-   bool Check      = isApprox(SpecVol(0, 0), VolRefReal, RTol);  // expect False
-   bool CheckClose = isApprox(SpecVol(0, 0), VolRefReal, RTol2); // expect True
+   bool Check = isApprox(SpecVol(0, 0), TeosExpValueVol, RTol); // expect False
+   bool CheckClose =
+       isApprox(SpecVol(0, 0), TeosExpValueVol, RTol2); // expect True
    if (Check) {
       Err++;
       LOG_ERROR("linearSpecVolCheckValue: SpecVol Linear is undistinguishable "
                 "from TEOS10 Ref Value");
    }
-   // else if (!Check) {
-   // LOG_INFO("linearSpecVolCheckValue: SpecVol TEOS10 {}, got {} with Linear",
-   //          VolRefReal, SpecVol(0, 0));
-   // }
-   // LOG_INFO(
-   //     "linearSpecVolCheckValue: SpecVol TEOS10 and Linear are within {}",
-   //     RTol2);
    if (!CheckClose) {
       Err++;
       LOG_ERROR("linearSpecVolCheckValue: SpecVol TEOS10 and Linear are NOT "
@@ -502,6 +455,7 @@ int eosTest(const std::string &MeshFile = "OmegaMesh.nc") {
    const auto &Mesh = HorzMesh::getDefault();
    LOG_INFO("Single value checks:");
    Err += gswcSpecVolCheckValue();
+   Err += fetchCoeff();
    Err += poly75tDeltaCheckValue();
    Err += poly75tSpecVolCheckValue();
    Err += linearSpecVolCheckValue();

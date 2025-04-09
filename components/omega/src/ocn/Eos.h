@@ -53,22 +53,20 @@ class TEOS10Poly75t {
       }
    }
 
-   // To be added:
    // Note that it assumes that we have called calcPCoeffs already
    //
-   // KOKKOS_FUNCTION void calcDisplacedSpecVol(const Array2DReal
-   // &SpecVolDisplaced,
-   //                                 I4 ICell, I4 KChunk,
-   //                                 const Array2DReal &Pressure) const {
+   KOKKOS_FUNCTION void
+   calcDisplacedSpecVol(const Array2DReal &SpecVolDisplaced, I4 ICell,
+                        I4 KChunk, const Array2DReal &Pressure) const {
 
-   //    const I4 KStart = KChunk * VecLength;
-   //    // insert exception for the surface
-   //    for (int KVec = 0; KVec < VecLength; ++KVec) {
-   //       const I4 K        = KStart + 1 + KVec;
-   //       SpecVolDisplaced(ICell, K) = calcRefProfile(Pressure(ICell, K-1)) +
-   //       calcDelta(Pressure(ICell, K-1));
-   //    }
-   // }
+      const I4 KStart = KChunk * VecLength;
+      for (int KVec = 0; KVec < VecLength; ++KVec) {
+         const I4 K                 = KStart + KVec;
+         const I4 KTmp              = Kokkos::min(K + 1, 60);
+         SpecVolDisplaced(ICell, K) = calcRefProfile(Pressure(ICell, KTmp)) +
+                                      calcDelta(KVec, Pressure(ICell, KTmp));
+      }
+   }
 
    //   This member function takes point-wise conservative temperature, absolute
    //   salinity and calculate the relevant coefficients stored as data members
@@ -151,8 +149,6 @@ class TEOS10Poly75t {
           pp;
       return v0;
    }
-   //  private:
-   //    Array2DReal specVolPcoeffs;
 };
 
 /// Linear Equation of State
@@ -228,7 +224,6 @@ class Eos {
    );
 
  private:
-   //   EosType eosChoice;
    I4 NCellsAll;
    I4 NChunks;
    // void truncateTempSal();
@@ -244,6 +239,7 @@ class Eos {
    static Eos *DefaultEos;
    // map with all eos objects
    static std::map<std::string, std::unique_ptr<Eos>> AllEos;
+   //  void defineFields();
 
 }; // end class Eos
 
