@@ -241,7 +241,6 @@ int testEosTeos10() {
 
 void finalizeEosTest() {
    Eos::clear();
-   Tracers::clear();
    HorzMesh::clear();
    Decomp::clear();
    Field::clear();

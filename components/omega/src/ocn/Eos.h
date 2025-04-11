@@ -15,11 +15,9 @@
 #include "EosConstants.h"
 #include "HorzMesh.h"
 #include "MachEnv.h"
-#include "OceanState.h"
-#include "TimeMgr.h"
-#include "Tracers.h"
-
 #include "OmegaKokkos.h"
+#include "TimeMgr.h"
+#include <string>
 
 namespace OMEGA {
 
@@ -190,6 +188,11 @@ class Eos {
    EosType eosChoice;
    Array2DReal SpecVol;
    Array2DReal SpecVolDisplaced;
+   std::string SpecVolFldName;          ///< Field name for SpecVol
+   std::string SpecVolDisplacedFldName; ///< Field name for SpecVolDisplaced
+   std::string EosGroupName;
+   std::string Name;
+
    void computeSpecVol(const Array2DReal &SpecVol,
                        const Array2DReal &ConservativeTemperature,
                        const Array2DReal &AbsoluteSalinity,
@@ -211,7 +214,7 @@ class Eos {
       auto *NewEos = new Eos(Name, Mesh, NVertLevels);
       AllEos.emplace(Name, NewEos);
 
-      return get(Name);
+      return NewEos; // get(Name);
    }
    ~Eos();
    // Deallocates arrays
@@ -242,7 +245,7 @@ class Eos {
    static Eos *DefaultEos;
    // map with all eos objects
    static std::map<std::string, std::unique_ptr<Eos>> AllEos;
-   //  void defineFields();
+   void defineFields();
 
 }; // end class Eos
 

@@ -13,9 +13,9 @@ TEOS10Poly75t::TEOS10Poly75t(int NVertLevels) : NVertLevels(NVertLevels) {
 
 LinearEOS::LinearEOS() {}
 
-Eos::Eos(const std::string &Name, ///< [in] Name for eos object
-         const HorzMesh *Mesh,    ///< [in] Horizontal mesh
-         int NVertLevels          ///< [in] Number of vertical levels
+Eos::Eos(const std::string &Name_, ///< [in] Name for eos object
+         const HorzMesh *Mesh,     ///< [in] Horizontal mesh
+         int NVertLevels           ///< [in] Number of vertical levels
          )
     : computeSpecVolTEOS10Poly75t(NVertLevels) {
    SpecVol = Array2DReal("SpecVol", Mesh->NCellsAll, NVertLevels);
@@ -24,9 +24,11 @@ Eos::Eos(const std::string &Name, ///< [in] Name for eos object
    // Array dimension lengths
    NCellsAll = Mesh->NCellsAll;
    NChunks   = NVertLevels / VecLength;
+   Name      = Name_;
 
    // Register fields and metadata for IO
-   // defineFields();
+   defineFields();
+
 } // end constructor
 
 // Initializes the Eos (Equation of Eos) class and its options.
@@ -120,20 +122,102 @@ void Eos::computeSpecVol(const Array2DReal &SpecVol,
 }
 
 //------------------------------------------------------------------------------
+// Define IO fields and metadata
+void Eos::defineFields() {
+
+   int Err = 0;
+
+   SpecVolFldName          = "SpecVol";
+   SpecVolDisplacedFldName = "SpecVolDisplaced";
+   if (Name != "Default") {
+      SpecVolFldName.append(Name);
+      SpecVolDisplacedFldName.append(Name);
+   }
+
+   // Create fields for state variables
+   int NDims = 2;
+   std::vector<std::string> DimNames(NDims);
+   DimNames[0] = "NCells";
+   DimNames[1] = "NVertLevels";
+
+   auto SpecVolField =
+       Field::create(SpecVolFldName,                   // Field name
+                     "Layer-averaged Specific Volume", /// long Name
+                     "m3 kg-1",                        // units
+                     "sea_water_specific_volume",      // CF-ish Name
+                     0.0,                              // min valid value
+                     9.99E+30,                         // max valid value
+                     -9.99E+30, // scalar used for undefined entries
+                     NDims,     // number of dimensions
+                     DimNames   // dimension names
+       );
+   auto SpecVolDisplacedField =
+       Field::create(SpecVolDisplacedFldName, // Field name
+                     "Specific Volume displaced adiabatically "
+                     "to 1 layer below",                    /// long Name
+                     "m3 kg-1",                             // units
+                     "sea_water_specific_volume_displaced", // CF-ish Name
+                     0.0,                                   // min valid value
+                     9.99E+30,                              // max valid value
+                     -9.99E+30, // scalar used for undefined entried
+                     NDims,     // number of dimensions
+                     DimNames   // dimension names
+       );
+
+   // Create a field group for the eos-specific state fields
+   EosGroupName = "Eos";
+   if (Name != "Default") {
+      EosGroupName.append(Name);
+   }
+   auto EosGroup = FieldGroup::create(EosGroupName);
+
+   // Add restart group if needed
+   if (!FieldGroup::exists("Restart"))
+      auto RestartGroup = FieldGroup::create("Restart");
+
+   Err = EosGroup->addField(SpecVolDisplacedFldName);
+   if (Err != 0)
+      LOG_ERROR("Error adding {} to field group {}", SpecVolDisplacedFldName,
+                EosGroupName);
+   Err = EosGroup->addField(SpecVolFldName);
+   if (Err != 0)
+      LOG_ERROR("Error adding {} to field group {}", SpecVolFldName,
+                EosGroupName);
+
+   Err = FieldGroup::addFieldToGroup(SpecVolDisplacedFldName, "Restart");
+   if (Err != 0)
+      LOG_ERROR("Error adding {} to Restart field group",
+                SpecVolDisplacedFldName);
+   Err = FieldGroup::addFieldToGroup(SpecVolFldName, "Restart");
+   if (Err != 0)
+      LOG_ERROR("Error adding {} to Restart field group", SpecVolFldName);
+
+   // Associate Field with data
+   Err = SpecVolDisplacedField->attachData<Array2DReal>(SpecVolDisplaced);
+   if (Err != 0)
+      LOG_ERROR("Error attaching data array to field {}",
+                SpecVolDisplacedFldName);
+   Err = SpecVolField->attachData<Array2DReal>(SpecVol);
+   if (Err != 0)
+      LOG_ERROR("Error attaching data array to field {}", SpecVolFldName);
+
+} // end defineIOFields
+
+//------------------------------------------------------------------------------
 // Destroys the eos class
 Eos::~Eos() {
 
    // Kokkos arrays removed when no longer in scope
-   // //    int Err;
-   //    Err = FieldGroup::destroy(EosGroupName);
-   //    if (Err != 0)
-   //       LOG_ERROR("Error removing FieldGroup {}", EosGroupName);
-   //    Err = Field::destroy(SpecVolFldName);
-   //    if (Err != 0)
-   //       LOG_ERROR("Error removing Field {}", SpecVolFldName);
-   //    Err = Field::destroy(SpecVolDisplacedFldName);
-   //    if (Err != 0)
-   //       LOG_ERROR("Error removing Field {}", SpecVolDisplacedFldName);
+   int Err;
+   Err = FieldGroup::destroy(EosGroupName);
+   if (Err != 0)
+      LOG_ERROR("Error removing FieldGroup {}", EosGroupName);
+   Err = Field::destroy(SpecVolFldName);
+   if (Err != 0)
+      LOG_ERROR("Error removing Field {}", SpecVolFldName);
+   Err = Field::destroy(SpecVolDisplacedFldName);
+   if (Err != 0)
+      LOG_ERROR("Error removing Field {}", SpecVolDisplacedFldName);
 
 } // end destructor
 
@@ -166,90 +250,4 @@ Eos *Eos::get(const std::string &Name ///< [in] Name of eos
 
 } // end get eos
 
-//------------------------------------------------------------------------------
-// Define IO fields and metadata
-// void Eos::defineFields() {
-//
-//    int Err = 0;
-//
-//    SpecVolFldName = "SpecVol";
-//    SpecVolDisplacedFldName = "SpecVolDisplaced";
-//    if (Name != "Default") {
-//       SpecVolFldName.append(Name);
-//       SpecVolDisplacedFldName.append(Name);
-//    }
-//
-//    // Create fields for state variables
-//    int NDims = 2;
-//    std::vector<std::string> DimNames(NDims);
-//    DimNames[0] = "NCells";
-//    DimNames[1] = "NVertLevels";
-//
-//    auto SpecVolField =
-//        Field::create(SpecVolFldName,               // Field name
-//                      "Specific Volume of layer on cell center", /// long Name
-//                      "m3 kg-1",                                 // units
-//                      "sea_water_specific_volume",         // CF standard-ish
-//                      Name 0.0,                                 // min valid
-//                      value 9.99E+30,                            // max valid
-//                      value -9.99E+30, // scalar used for undefined entries
-//                      NDims,     // number of dimensions
-//                      DimNames   // dimension names
-//        );
-//    auto SpecVolDisplacedField =
-//        Field::create(SpecVolDisplacedFldName,               // Field name
-//                      "Specific Volume displaced adiabatically to 1 layer
-//                      below", /// long Name "m3 kg-1", // units
-//                      "sea_water_specific_volume_displaced", // CF
-//                      standard-ish Name 0.0, // min valid value 9.99E+30, //
-//                      max valid value -9.99E+30, // scalar used for undefined
-//                      entries NDims,     // number of dimensions DimNames   //
-//                      dimension names
-//        );
-//
-//    // Create a field group for the eos-specific state fields
-//    EosGroupName = "Eos";
-//    if (Name != "Default") {
-//       EosGroupName.append(Name);
-//    }
-//    auto EosGroup = FieldGroup::create(EosGroupName);
-//
-//    // Add restart group if needed
-//    if (!FieldGroup::exists("Restart"))
-//       auto RestartGroup = FieldGroup::create("Restart");
-//
-//    Err = EosGroup->addField(SpecVolDisplacedFldName);
-//    if (Err != 0)
-//       LOG_ERROR("Error adding {} to field group {}", SpecVolDisplacedFldName,
-//                 EosGroupName);
-//    Err = EosGroup->addField(SpecVolFldName);
-//    if (Err != 0)
-//       LOG_ERROR("Error adding {} to field group {}", SpecVolFldName,
-//                 EosGroupName);
-//
-//    Err = FieldGroup::addFieldToGroup(SpecVolDisplacedFldName, "Restart");
-//    if (Err != 0)
-//       LOG_ERROR("Error adding {} to Restart field group",
-//                 SpecVolDisplacedFldName);
-//    Err = FieldGroup::addFieldToGroup(SpecVolFldName, "Restart");
-//    if (Err != 0)
-//       LOG_ERROR("Error adding {} to Restart field group",
-//                 SpecVolFldName);
-//
-//    // Associate Field with data
-//    I4 TimeIndex;
-//    Err = getTimeIndex(TimeIndex, 0);
-//
-//    Err =
-//        SpecVolDisplacedField->attachData<Array2DReal>(SpecVolDisplaced[TimeIndex]);
-//    if (Err != 0)
-//       LOG_ERROR("Error attaching data array to field {}",
-//                 SpecVolDisplacedFldName);
-//    Err =
-//        SpecVolField->attachData<Array2DReal>(SpecVol[TimeIndex]);
-//    if (Err != 0)
-//       LOG_ERROR("Error attaching data array to field {}",
-//                 SpecVolFldName);
-//
-// } // end defineIOFields
 } // namespace OMEGA
