@@ -35,7 +35,7 @@ class TEOS10Poly75t {
    Array2DReal specVolPcoeffs;
 
    /// constructor declaration
-   TEOS10Poly75t();
+   TEOS10Poly75t(int NVertLevels);
 
    KOKKOS_FUNCTION void operator()(const Array2DReal &SpecVol, I4 ICell,
                                    I4 KChunk,
@@ -62,7 +62,7 @@ class TEOS10Poly75t {
       const I4 KStart = KChunk * VecLength;
       for (int KVec = 0; KVec < VecLength; ++KVec) {
          const I4 K                 = KStart + KVec;
-         const I4 KTmp              = Kokkos::min(K + 1, 60);
+         const I4 KTmp              = Kokkos::min(K + 1, NVertLevels);
          SpecVolDisplaced(ICell, K) = calcRefProfile(Pressure(ICell, KTmp)) +
                                       calcDelta(KVec, Pressure(ICell, KTmp));
       }
@@ -149,6 +149,9 @@ class TEOS10Poly75t {
           pp;
       return v0;
    }
+
+ private:
+   const int NVertLevels;
 };
 
 /// Linear Equation of State

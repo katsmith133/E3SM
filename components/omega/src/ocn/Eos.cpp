@@ -7,7 +7,7 @@ namespace OMEGA {
 Eos *Eos::DefaultEos = nullptr;
 std::map<std::string, std::unique_ptr<Eos>> Eos::AllEos;
 
-TEOS10Poly75t::TEOS10Poly75t() {
+TEOS10Poly75t::TEOS10Poly75t(int NVertLevels) : NVertLevels(NVertLevels) {
    specVolPcoeffs = Array2DReal("specVolPcoeffs", 6, VecLength);
 }
 
@@ -16,7 +16,8 @@ LinearEOS::LinearEOS() {}
 Eos::Eos(const std::string &Name, ///< [in] Name for eos object
          const HorzMesh *Mesh,    ///< [in] Horizontal mesh
          int NVertLevels          ///< [in] Number of vertical levels
-) {
+         )
+    : computeSpecVolTEOS10Poly75t(NVertLevels) {
    SpecVol = Array2DReal("SpecVol", Mesh->NCellsAll, NVertLevels);
    SpecVolDisplaced =
        Array2DReal("SpecVolDisplaced", Mesh->NCellsAll, NVertLevels);

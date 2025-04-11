@@ -291,7 +291,7 @@ int poly75tDeltaCheckValue() {
    int Err     = 0;
    const int K = 0;
 
-   TEOS10Poly75t specvolpoly75t;
+   TEOS10Poly75t specvolpoly75t(NVertLevels);
    specvolpoly75t.calcPCoeffs(specvolpoly75t.specVolPcoeffs, K, Ct, Sa);
    Real Delta = specvolpoly75t.calcDelta(K, P);
    // LOG_INFO("Teos10 poly75tDeltaCheckValue: produced delta from poly75t");
@@ -324,7 +324,7 @@ int poly75tSpecVolCheckValue() {
    Parray(0, 0)  = P;
    SpecVol(0, 0) = 0.0;
 
-   TEOS10Poly75t specvolpoly75t;
+   TEOS10Poly75t specvolpoly75t(NVertLevels);
    specvolpoly75t(SpecVol, ICell, K, Tarray, Sarray, Parray);
    // LOG_INFO("Teos10 poly75tSpecVolCheckValue: produced SpecVol from
    // poly75t"); LOG_INFO("Value of SpecVol: {}", SpecVol(0, 0));
