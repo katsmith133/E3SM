@@ -185,7 +185,7 @@ class LinearEOS {
 // Eos class
 class Eos {
  public:
-   EosType eosChoice;
+   EosType EosChoice;
    Array2DReal SpecVol;
    Array2DReal SpecVolDisplaced;
    std::string SpecVolFldName;          ///< Field name for SpecVol

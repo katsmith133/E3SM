@@ -88,7 +88,8 @@ I4 initEosTest(const std::string &mesh) {
    }
 
    const auto &Mesh = HorzMesh::getDefault();
-
+   std::shared_ptr<Dimension> VertDim =
+       Dimension::create("NVertLevels", NVertLevels);
    return Err;
 }
 
@@ -144,7 +145,7 @@ int testEosLinear() {
    // create Eos to test
    Eos::create("LinearEos", Mesh, NVertLevels);
    Eos *TestEos       = Eos::get("LinearEos");
-   TestEos->eosChoice = EosType::Linear;
+   TestEos->EosChoice = EosType::Linear;
 
    // create ocean state array
    Array2DReal Sarray = Array2DReal("Sarray", Mesh->NCellsAll, NVertLevels);
@@ -194,7 +195,7 @@ int testEosTeos10() {
    // create Eos to test
    Eos::create("TeosEos", Mesh, NVertLevels);
    Eos *TestEos       = Eos::get("TeosEos");
-   TestEos->eosChoice = EosType::TEOS10Poly75t;
+   TestEos->EosChoice = EosType::TEOS10Poly75t;
 
    // create ocean state array
    Array2DReal Sarray = Array2DReal("Sarray", Mesh->NCellsAll, NVertLevels);

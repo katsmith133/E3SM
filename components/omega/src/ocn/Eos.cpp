@@ -62,7 +62,7 @@ int Eos::init() {
    }
 
    if (EosTypeStr == "Linear" or EosTypeStr == "linear") {
-      DefaultEos->eosChoice = EosType::Linear;
+      DefaultEos->EosChoice = EosType::Linear;
       Err                   = EosConfig.get("LinearDRhoDT",
                                             DefaultEos->computeSpecVolLinear.dRhodT);
       if (Err != 0) {
@@ -85,7 +85,7 @@ int Eos::init() {
       }
    } else if ((EosTypeStr == "teos10") or (EosTypeStr == "teos-10") or
               (EosTypeStr == "TEOS-10")) {
-      DefaultEos->eosChoice = EosType::TEOS10Poly75t;
+      DefaultEos->EosChoice = EosType::TEOS10Poly75t;
    } else {
       LOG_CRITICAL("Eos: Unknown EosType requested");
       Err = -1;
@@ -103,14 +103,14 @@ void Eos::computeSpecVol(const Array2DReal &SpecVol,
    OMEGA_SCOPE(LocComputeSpecVolLinear, computeSpecVolLinear);
    OMEGA_SCOPE(LocComputeSpecVolTEOS10Poly75t, computeSpecVolTEOS10Poly75t);
    deepCopy(LocSpecVol, 0.0);
-   if (eosChoice == EosType::Linear) {
+   if (EosChoice == EosType::Linear) {
       parallelFor(
           "eos-linear", {NCellsAll, NChunks},
           KOKKOS_LAMBDA(I4 ICell, I4 KChunk) {
              LocComputeSpecVolLinear(LocSpecVol, ICell, KChunk,
                                      ConservativeTemperature, AbsoluteSalinity);
           });
-   } else if (eosChoice == EosType::TEOS10Poly75t) {
+   } else if (EosChoice == EosType::TEOS10Poly75t) {
       parallelFor(
           "eos-teos10", {NCellsAll, NChunks},
           KOKKOS_LAMBDA(I4 ICell, I4 KChunk) {
