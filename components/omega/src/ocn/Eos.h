@@ -41,13 +41,15 @@ class TEOS10Poly75t {
                                    const Array2DReal &AbsoluteSalinity,
                                    const Array2DReal &Pressure) const {
 
+      OMEGA_SCOPE(LocSpecVolPcoeffs, specVolPcoeffs);
       const I4 KStart = KChunk * VecLength;
       for (int KVec = 0; KVec < VecLength; ++KVec) {
          const I4 K = KStart + KVec;
-         calcPCoeffs(specVolPcoeffs, KVec, ConservativeTemperature(ICell, K),
+         calcPCoeffs(LocSpecVolPcoeffs, KVec, ConservativeTemperature(ICell, K),
                      AbsoluteSalinity(ICell, K));
-         SpecVol(ICell, K) = calcRefProfile(Pressure(ICell, K)) +
-                             calcDelta(KVec, Pressure(ICell, K));
+         SpecVol(ICell, K) =
+             calcRefProfile(Pressure(ICell, K)) +
+             calcDelta(LocSpecVolPcoeffs, KVec, Pressure(ICell, K));
       }
    }
 
@@ -57,12 +59,14 @@ class TEOS10Poly75t {
    calcDisplacedSpecVol(const Array2DReal &SpecVolDisplaced, I4 ICell,
                         I4 KChunk, const Array2DReal &Pressure) const {
 
+      OMEGA_SCOPE(LocSpecVolPcoeffs, specVolPcoeffs);
       const I4 KStart = KChunk * VecLength;
       for (int KVec = 0; KVec < VecLength; ++KVec) {
-         const I4 K                 = KStart + KVec;
-         const I4 KTmp              = Kokkos::min(K + 1, NVertLevels);
-         SpecVolDisplaced(ICell, K) = calcRefProfile(Pressure(ICell, KTmp)) +
-                                      calcDelta(KVec, Pressure(ICell, KTmp));
+         const I4 K    = KStart + KVec;
+         const I4 KTmp = Kokkos::min(K + 1, NVertLevels);
+         SpecVolDisplaced(ICell, K) =
+             calcRefProfile(Pressure(ICell, KTmp)) +
+             calcDelta(LocSpecVolPcoeffs, KVec, Pressure(ICell, KTmp));
       }
    }
 
@@ -118,7 +122,8 @@ class TEOS10Poly75t {
       // could insert a check here (abs(value)> 0 value or <e+33)
    }
 
-   KOKKOS_FUNCTION Real calcDelta(I4 K, const Real P) const {
+   KOKKOS_FUNCTION Real calcDelta(const Array2DReal &specVolPcoeffs, I4 K,
+                                  const Real P) const {
       const Real Pu = 1e4;
       Real pp       = P / Pu;
 
@@ -171,7 +176,6 @@ class LinearEOS {
                                    I4 KChunk,
                                    const Array2DReal &ConservativeTemperature,
                                    const Array2DReal &AbsoluteSalinity) const {
-
       const I4 KStart = KChunk * VecLength;
       for (int KVec = 0; KVec < VecLength; ++KVec) {
          const I4 K = KStart + KVec;
