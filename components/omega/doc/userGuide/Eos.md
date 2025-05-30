@@ -9,7 +9,8 @@ The user-configurable options are: `EosType` (either `Linear` or `teos-10`), as 
 ```yaml
 Eos:
    EosType : Linear
-   LinearDRhoDT: -0.2
-   LinearDRhoDS : 0.8
-   LinearRhoT0S0 : 1000.0
+   Linear:
+      DRhoDT: -0.2
+      DRhoDS : 0.8
+      RhoT0S0 : 1000.0
 ```
