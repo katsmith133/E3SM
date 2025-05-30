@@ -1,10 +1,9 @@
-(omega - dev -
- eos) =
+(omega-dev-eos) =
 
-    ##Equation of State
+## Equation of State
 
-    The Omega `Eos` class A state object is created by the `init` method,
- which assumes that `Decomp` and `HorzMesh` have already been initialized.
+The Omega `Eos` class A state object is created by the `init` method,
+which assumes that `Decomp` and `HorzMesh` have already been initialized.
 ```c++ Err = OMEGA::Decomp::init();
 Err         = OMEGA::HorzMesh::init();
 Err         = OMEGA::Eos::init();
@@ -21,5 +20,5 @@ After initialization, the default state object can be retrieved via:
 OMEGA::Eos *Eos = OMEGA::Eos::getDefault();
 ```
 
-    The `Eos` is meant to be a container that calls either the linear or
-    Teos - 10 functor dpending on the `EosType` chosen by the user.
+The `Eos` is meant to be a container that calls either the linear or
+Teos-10 functor depending on the `EosType` chosen by the user.
