@@ -291,9 +291,9 @@ int poly75tDeltaCheckValue() {
    int Err     = 0;
    const int K = 0;
 
-   TEOS10Poly75t specvolpoly75t(NVertLevels);
-   specvolpoly75t.calcPCoeffs(specvolpoly75t.specVolPcoeffs, K, Ct, Sa);
-   Real Delta = specvolpoly75t.calcDelta(specvolpoly75t.specVolPcoeffs, K, P);
+   TEOS10Poly75t SpecVolPoly75t(NVertLevels);
+   SpecVolPoly75t.calcPCoeffs(SpecVolPoly75t.SpecVolPCoeffs, K, Ct, Sa);
+   Real Delta = SpecVolPoly75t.calcDelta(SpecVolPoly75t.SpecVolPCoeffs, K, P);
    // LOG_INFO("Teos10 poly75tDeltaCheckValue: produced delta from poly75t");
    // LOG_INFO("Value of Delta: {}", Delta);
    bool Check = isApprox(Delta, TeosExpValueDelta, RTol);
@@ -324,8 +324,8 @@ int poly75tSpecVolCheckValue() {
    Parray(0, 0)  = P;
    SpecVol(0, 0) = 0.0;
 
-   TEOS10Poly75t specvolpoly75t(NVertLevels);
-   specvolpoly75t(SpecVol, ICell, K, Tarray, Sarray, Parray);
+   TEOS10Poly75t SpecVolPoly75t(NVertLevels);
+   SpecVolPoly75t(SpecVol, ICell, K, Tarray, Sarray, Parray);
    // LOG_INFO("Teos10 poly75tSpecVolCheckValue: produced SpecVol from
    // poly75t"); LOG_INFO("Value of SpecVol: {}", SpecVol(0, 0));
    bool Check = isApprox(SpecVol(0, 0), TeosExpValueVol, RTol);
@@ -453,13 +453,11 @@ int eosTest(const std::string &MeshFile = "OmegaMesh.nc") {
       LOG_CRITICAL("EosTest: Error initializing");
    }
    const auto &Mesh = HorzMesh::getDefault();
+   
    LOG_INFO("Single value checks:");
    Err += gswcSpecVolCheckValue();
    Err += fetchCoeff();
-   // Err += poly75tDeltaCheckValue();
-   // Err += poly75tSpecVolCheckValue();
-   // Err += linearSpecVolCheckValue();
-   // Err += linearDensityLinearityTest();
+
    LOG_INFO("Full array checks:");
    Err += testEosMapping();
    Err += testEosLinear();

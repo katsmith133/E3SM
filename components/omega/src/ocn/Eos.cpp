@@ -8,7 +8,7 @@ Eos *Eos::DefaultEos = nullptr;
 std::map<std::string, std::unique_ptr<Eos>> Eos::AllEos;
 
 TEOS10Poly75t::TEOS10Poly75t(int NVertLevels) : NVertLevels(NVertLevels) {
-   specVolPcoeffs = Array2DReal("specVolPcoeffs", 6, VecLength);
+   SpecVolPCoeffs = Array2DReal("SpecVolPCoeffs", 6, VecLength);
 }
 
 LinearEOS::LinearEOS() {}
@@ -56,32 +56,34 @@ int Eos::init() {
    std::string EosTypeStr;
    Err = EosConfig.get("EosType", EosTypeStr);
    if (Err != 0) {
-      LOG_CRITICAL("Eos: EosType not found in "
-                   "EosConfig");
+      LOG_CRITICAL("Eos: EosType subgroup not found in EosConfig");
       return Err;
    }
 
    if (EosTypeStr == "Linear" or EosTypeStr == "linear") {
+      Config EosLinConfig("Linear");
+      Err = EosConfig.get(EosLinConfig);
+      if (Err != 0) {
+         LOG_CRITICAL("Eos: Linear subgroup not found in EosConfig");
+         return Err;
+      }
       DefaultEos->EosChoice = EosType::Linear;
-      Err                   = EosConfig.get("LinearDRhoDT",
+      Err                   = EosLinConfig.get("DRhoDT",
                                             DefaultEos->computeSpecVolLinear.dRhodT);
       if (Err != 0) {
-         LOG_CRITICAL("Eos: linear dRhodT not found in "
-                      "EosConfig");
+         LOG_CRITICAL("Eos: Parameter Linear:DRhodT not found in EosLinConfig");
          return Err;
       }
-      Err = EosConfig.get("LinearDRhoDS",
+      Err = EosLinConfig.get("DRhoDS",
                           DefaultEos->computeSpecVolLinear.dRhodS);
       if (Err != 0) {
-         LOG_CRITICAL("Eos: linear dRhodS not found in "
-                      "EosConfig");
+         LOG_CRITICAL("Eos: Parameter Linear:DRhodS not found in EosLinConfig");
          return Err;
       }
-      Err = EosConfig.get("LinearRhoT0S0",
+      Err = EosLinConfig.get("RhoT0S0",
                           DefaultEos->computeSpecVolLinear.RhoT0S0);
       if (Err != 0) {
-         LOG_CRITICAL("Eos: Ref Rho linearRhoT0S0 not found in "
-                      "EosConfig");
+         LOG_CRITICAL("Eos: Parameter Linear:RhoT0S0 not found in EosLinConfig");
       }
    } else if ((EosTypeStr == "teos10") or (EosTypeStr == "teos-10") or
               (EosTypeStr == "TEOS-10")) {

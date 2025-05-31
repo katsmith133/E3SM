@@ -30,7 +30,7 @@ enum class EosType {
 /// TEOS10 75-term polynomial
 class TEOS10Poly75t {
  public:
-   Array2DReal specVolPcoeffs;
+   Array2DReal SpecVolPCoeffs;
 
    /// constructor declaration
    TEOS10Poly75t(int NVertLevels);
@@ -41,15 +41,15 @@ class TEOS10Poly75t {
                                    const Array2DReal &AbsoluteSalinity,
                                    const Array2DReal &Pressure) const {
 
-      OMEGA_SCOPE(LocSpecVolPcoeffs, specVolPcoeffs);
+      OMEGA_SCOPE(LocSpecVolPCoeffs, SpecVolPCoeffs);
       const I4 KStart = KChunk * VecLength;
       for (int KVec = 0; KVec < VecLength; ++KVec) {
          const I4 K = KStart + KVec;
-         calcPCoeffs(LocSpecVolPcoeffs, KVec, ConservativeTemperature(ICell, K),
+         calcPCoeffs(LocSpecVolPCoeffs, KVec, ConservativeTemperature(ICell, K),
                      AbsoluteSalinity(ICell, K));
          SpecVol(ICell, K) =
              calcRefProfile(Pressure(ICell, K)) +
-             calcDelta(LocSpecVolPcoeffs, KVec, Pressure(ICell, K));
+             calcDelta(LocSpecVolPCoeffs, KVec, Pressure(ICell, K));
       }
    }
 
@@ -59,20 +59,20 @@ class TEOS10Poly75t {
    calcDisplacedSpecVol(const Array2DReal &SpecVolDisplaced, I4 ICell,
                         I4 KChunk, const Array2DReal &Pressure) const {
 
-      OMEGA_SCOPE(LocSpecVolPcoeffs, specVolPcoeffs);
+      OMEGA_SCOPE(LocSpecVolPCoeffs, SpecVolPCoeffs);
       const I4 KStart = KChunk * VecLength;
       for (int KVec = 0; KVec < VecLength; ++KVec) {
          const I4 K    = KStart + KVec;
          const I4 KTmp = Kokkos::min(K + 1, NVertLevels);
          SpecVolDisplaced(ICell, K) =
              calcRefProfile(Pressure(ICell, KTmp)) +
-             calcDelta(LocSpecVolPcoeffs, KVec, Pressure(ICell, KTmp));
+             calcDelta(LocSpecVolPCoeffs, KVec, Pressure(ICell, KTmp));
       }
    }
 
    //   This member function takes point-wise conservative temperature, absolute
    //   salinity and calculate the relevant coefficients stored as data members
-   KOKKOS_FUNCTION void calcPCoeffs(const Array2DReal &specVolPcoeffs,
+   KOKKOS_FUNCTION void calcPCoeffs(const Array2DReal &SpecVolPCoeffs,
                                     const I4 K, const Real Ct,
                                     const Real Sa) const {
       const Real SAu    = 40 * 35.16504 / 35;
@@ -81,19 +81,19 @@ class TEOS10Poly75t {
       GSW_SPECVOL_COEFFICIENTS;
       const Real ss        = Kokkos::sqrt((Sa + DeltaS) / SAu);
       Real tt              = Ct / CTu;
-      specVolPcoeffs(5, K) = V005;
+      SpecVolPCoeffs(5, K) = V005;
 
-      specVolPcoeffs(4, K) = V014 * tt + V104 * ss + V004;
-      specVolPcoeffs(3, K) =
+      SpecVolPCoeffs(4, K) = V014 * tt + V104 * ss + V004;
+      SpecVolPCoeffs(3, K) =
           (V023 * tt + V113 * ss + V013) * tt + (V203 * ss + V103) * ss + V003;
-      specVolPcoeffs(2, K) =
+      SpecVolPCoeffs(2, K) =
           (((V042 * tt + V132 * ss + V032) * tt + (V222 * ss + V122) * ss +
             V022) *
                tt +
            ((V312 * ss + V212) * ss + V112) * ss + V012) *
               tt +
           (((V402 * ss + V302) * ss + V202) * ss + V102) * ss + V002;
-      specVolPcoeffs(1, K) =
+      SpecVolPCoeffs(1, K) =
           ((((V051 * tt + V141 * ss + V041) * tt + (V231 * ss + V131) * ss +
              V031) *
                 tt +
@@ -103,7 +103,7 @@ class TEOS10Poly75t {
               tt +
           ((((V501 * ss + V401) * ss + V301) * ss + V201) * ss + V101) * ss +
           V001;
-      specVolPcoeffs(0, K) =
+      SpecVolPCoeffs(0, K) =
           (((((V060 * tt + V150 * ss + V050) * tt + (V240 * ss + V140) * ss +
               V040) *
                  tt +
@@ -122,19 +122,19 @@ class TEOS10Poly75t {
       // could insert a check here (abs(value)> 0 value or <e+33)
    }
 
-   KOKKOS_FUNCTION Real calcDelta(const Array2DReal &specVolPcoeffs, I4 K,
+   KOKKOS_FUNCTION Real calcDelta(const Array2DReal &SpecVolPCoeffs, I4 K,
                                   const Real P) const {
       const Real Pu = 1e4;
       Real pp       = P / Pu;
 
-      Real delta = ((((specVolPcoeffs(5, K) * pp + specVolPcoeffs(4, K)) * pp +
-                      specVolPcoeffs(3, K)) *
+      Real delta = ((((SpecVolPCoeffs(5, K) * pp + SpecVolPCoeffs(4, K)) * pp +
+                      SpecVolPCoeffs(3, K)) *
                          pp +
-                     specVolPcoeffs(2, K)) *
+                     SpecVolPCoeffs(2, K)) *
                         pp +
-                    specVolPcoeffs(1, K)) *
+                    SpecVolPCoeffs(1, K)) *
                        pp +
-                   specVolPcoeffs(0, K);
+                   SpecVolPCoeffs(0, K);
       return delta;
    }
    KOKKOS_FUNCTION Real calcRefProfile(const Real P) const {
