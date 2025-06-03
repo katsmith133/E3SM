@@ -444,5 +444,5 @@ add_omega_test(
     EOS_TEST
     testEos.exe
     ocn/EosTest.cpp
-    "-n;1"
+    "-n;2"
 )

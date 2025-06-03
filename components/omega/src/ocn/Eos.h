@@ -23,30 +23,30 @@ namespace OMEGA {
 
 enum class EosType {
    Linear,       /// Linear equation of state
-   TEOS10Poly75t /// Roquet et al. 2015 75 term expansion
+   Teos10Poly75t /// Roquet et al. 2015 75 term expansion
 };
 
 //
 /// TEOS10 75-term polynomial
-class TEOS10Poly75t {
+class Teos10Poly75t {
  public:
    Array2DReal SpecVolPCoeffs;
 
    /// constructor declaration
-   TEOS10Poly75t(int NVertLevels);
+   Teos10Poly75t(int NVertLevels);
 
    KOKKOS_FUNCTION void operator()(const Array2DReal &SpecVol, I4 ICell,
                                    I4 KChunk,
-                                   const Array2DReal &ConservativeTemperature,
-                                   const Array2DReal &AbsoluteSalinity,
+                                   const Array2DReal &ConservTemp,
+                                   const Array2DReal &AbsSalinity,
                                    const Array2DReal &Pressure) const {
 
       OMEGA_SCOPE(LocSpecVolPCoeffs, SpecVolPCoeffs);
       const I4 KStart = KChunk * VecLength;
       for (int KVec = 0; KVec < VecLength; ++KVec) {
          const I4 K = KStart + KVec;
-         calcPCoeffs(LocSpecVolPCoeffs, KVec, ConservativeTemperature(ICell, K),
-                     AbsoluteSalinity(ICell, K));
+         calcPCoeffs(LocSpecVolPCoeffs, KVec, ConservTemp(ICell, K),
+                     AbsSalinity(ICell, K));
          SpecVol(ICell, K) =
              calcRefProfile(Pressure(ICell, K)) +
              calcDelta(LocSpecVolPCoeffs, KVec, Pressure(ICell, K));
@@ -79,44 +79,44 @@ class TEOS10Poly75t {
       const Real CTu    = 40.;
       const Real DeltaS = 24.;
       GSW_SPECVOL_COEFFICIENTS;
-      const Real ss        = Kokkos::sqrt((Sa + DeltaS) / SAu);
-      Real tt              = Ct / CTu;
+      const Real Ss        = Kokkos::sqrt((Sa + DeltaS) / SAu);
+      Real Tt              = Ct / CTu;
       SpecVolPCoeffs(5, K) = V005;
 
-      SpecVolPCoeffs(4, K) = V014 * tt + V104 * ss + V004;
+      SpecVolPCoeffs(4, K) = V014 * Tt + V104 * Ss + V004;
       SpecVolPCoeffs(3, K) =
-          (V023 * tt + V113 * ss + V013) * tt + (V203 * ss + V103) * ss + V003;
+          (V023 * Tt + V113 * Ss + V013) * Tt + (V203 * Ss + V103) * Ss + V003;
       SpecVolPCoeffs(2, K) =
-          (((V042 * tt + V132 * ss + V032) * tt + (V222 * ss + V122) * ss +
+          (((V042 * Tt + V132 * Ss + V032) * Tt + (V222 * Ss + V122) * Ss +
             V022) *
-               tt +
-           ((V312 * ss + V212) * ss + V112) * ss + V012) *
-              tt +
-          (((V402 * ss + V302) * ss + V202) * ss + V102) * ss + V002;
+               Tt +
+           ((V312 * Ss + V212) * Ss + V112) * Ss + V012) *
+              Tt +
+          (((V402 * Ss + V302) * Ss + V202) * Ss + V102) * Ss + V002;
       SpecVolPCoeffs(1, K) =
-          ((((V051 * tt + V141 * ss + V041) * tt + (V231 * ss + V131) * ss +
+          ((((V051 * Tt + V141 * Ss + V041) * Tt + (V231 * Ss + V131) * Ss +
              V031) *
-                tt +
-            ((V321 * ss + V221) * ss + V121) * ss + V021) *
-               tt +
-           (((V411 * ss + V311) * ss + V211) * ss + V111) * ss + V011) *
-              tt +
-          ((((V501 * ss + V401) * ss + V301) * ss + V201) * ss + V101) * ss +
+                Tt +
+            ((V321 * Ss + V221) * Ss + V121) * Ss + V021) *
+               Tt +
+           (((V411 * Ss + V311) * Ss + V211) * Ss + V111) * Ss + V011) *
+              Tt +
+          ((((V501 * Ss + V401) * Ss + V301) * Ss + V201) * Ss + V101) * Ss +
           V001;
       SpecVolPCoeffs(0, K) =
-          (((((V060 * tt + V150 * ss + V050) * tt + (V240 * ss + V140) * ss +
+          (((((V060 * Tt + V150 * Ss + V050) * Tt + (V240 * Ss + V140) * Ss +
               V040) *
-                 tt +
-             ((V330 * ss + V230) * ss + V130) * ss + V030) *
-                tt +
-            (((V420 * ss + V320) * ss + V220) * ss + V120) * ss + V020) *
-               tt +
-           ((((V510 * ss + V410) * ss + V310) * ss + V210) * ss + V110) * ss +
+                 Tt +
+             ((V330 * Ss + V230) * Ss + V130) * Ss + V030) *
+                Tt +
+            (((V420 * Ss + V320) * Ss + V220) * Ss + V120) * Ss + V020) *
+               Tt +
+           ((((V510 * Ss + V410) * Ss + V310) * Ss + V210) * Ss + V110) * Ss +
            V010) *
-              tt +
-          (((((V600 * ss + V500) * ss + V400) * ss + V300) * ss + V200) * ss +
+              Tt +
+          (((((V600 * Ss + V500) * Ss + V400) * Ss + V300) * Ss + V200) * Ss +
            V100) *
-              ss +
+              Ss +
           V000;
 
       // could insert a check here (abs(value)> 0 value or <e+33)
@@ -125,17 +125,17 @@ class TEOS10Poly75t {
    KOKKOS_FUNCTION Real calcDelta(const Array2DReal &SpecVolPCoeffs, I4 K,
                                   const Real P) const {
       const Real Pu = 1e4;
-      Real pp       = P / Pu;
+      Real Pp       = P / Pu;
 
-      Real delta = ((((SpecVolPCoeffs(5, K) * pp + SpecVolPCoeffs(4, K)) * pp +
+      Real Delta = ((((SpecVolPCoeffs(5, K) * Pp + SpecVolPCoeffs(4, K)) * Pp +
                       SpecVolPCoeffs(3, K)) *
-                         pp +
+                         Pp +
                      SpecVolPCoeffs(2, K)) *
-                        pp +
+                        Pp +
                     SpecVolPCoeffs(1, K)) *
-                       pp +
+                       Pp +
                    SpecVolPCoeffs(0, K);
-      return delta;
+      return Delta;
    }
    KOKKOS_FUNCTION Real calcRefProfile(const Real P) const {
       const Real Pu  = 1e4;
@@ -145,12 +145,12 @@ class TEOS10Poly75t {
       const Real V03 = 1.7009109288e-08;
       const Real V04 = -1.6884162004e-08;
       const Real V05 = 1.9613503930e-09;
-      Real pp        = P / Pu;
+      Real Pp        = P / Pu;
 
-      Real v0 =
-          (((((V05 * pp + V04) * pp + V03) * pp + V02) * pp + V01) * pp + V00) *
-          pp;
-      return v0;
+      Real V0 =
+          (((((V05 * Pp + V04) * Pp + V03) * Pp + V02) * Pp + V01) * Pp + V00) *
+          Pp;
+      return V0;
    }
 
  private:
@@ -160,8 +160,8 @@ class TEOS10Poly75t {
 /// Linear Equation of State
 class LinearEOS {
  public:
-   Real dRhodT  = {-0.2};   // alpha in kg.m-3 degC-1
-   Real dRhodS  = {0.8};    // beta in kg m-3
+   Real DRhodT  = {-0.2};   // alpha in kg.m-3 degC-1
+   Real DRhodS  = {0.8};    // beta in kg m-3
    Real RhoT0S0 = {1000.0}; // density at (T,S)=(0,0) in kg.m-3
 
    /// constructor declaration
@@ -174,14 +174,14 @@ class LinearEOS {
 
    KOKKOS_FUNCTION void operator()(const Array2DReal &SpecVol, I4 ICell,
                                    I4 KChunk,
-                                   const Array2DReal &ConservativeTemperature,
-                                   const Array2DReal &AbsoluteSalinity) const {
+                                   const Array2DReal &ConservTemp,
+                                   const Array2DReal &AbsSalinity) const {
       const I4 KStart = KChunk * VecLength;
       for (int KVec = 0; KVec < VecLength; ++KVec) {
          const I4 K = KStart + KVec;
          SpecVol(ICell, K) =
-             1.0 / (RhoT0S0 + (dRhodT * ConservativeTemperature(ICell, K) +
-                               dRhodS * AbsoluteSalinity(ICell, K)));
+             1.0 / (RhoT0S0 + (DRhodT * ConservTemp(ICell, K) +
+                               DRhodS * AbsSalinity(ICell, K)));
       }
    }
 };
@@ -198,8 +198,8 @@ class Eos {
    std::string Name;
 
    void computeSpecVol(const Array2DReal &SpecVol,
-                       const Array2DReal &ConservativeTemperature,
-                       const Array2DReal &AbsoluteSalinity,
+                       const Array2DReal &ConservTemp,
+                       const Array2DReal &AbsSalinity,
                        const Array2DReal &Pressure) const;
    static I4 init();
    static Eos *create(const std::string &Name, const HorzMesh *Mesh,
@@ -237,7 +237,7 @@ class Eos {
    I4 NCellsAll;
    I4 NChunks;
    // void truncateTempSal();
-   TEOS10Poly75t computeSpecVolTEOS10Poly75t;
+   Teos10Poly75t computeSpecVolTeos10Poly75t;
    LinearEOS computeSpecVolLinear;
 
    // constructor declaration

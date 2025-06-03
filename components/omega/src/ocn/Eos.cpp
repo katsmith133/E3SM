@@ -7,7 +7,7 @@ namespace OMEGA {
 Eos *Eos::DefaultEos = nullptr;
 std::map<std::string, std::unique_ptr<Eos>> Eos::AllEos;
 
-TEOS10Poly75t::TEOS10Poly75t(int NVertLevels) : NVertLevels(NVertLevels) {
+Teos10Poly75t::Teos10Poly75t(int NVertLevels) : NVertLevels(NVertLevels) {
    SpecVolPCoeffs = Array2DReal("SpecVolPCoeffs", 6, VecLength);
 }
 
@@ -17,7 +17,7 @@ Eos::Eos(const std::string &Name_, ///< [in] Name for eos object
          const HorzMesh *Mesh,     ///< [in] Horizontal mesh
          int NVertLevels           ///< [in] Number of vertical levels
          )
-    : computeSpecVolTEOS10Poly75t(NVertLevels) {
+    : computeSpecVolTeos10Poly75t(NVertLevels) {
    SpecVol = Array2DReal("SpecVol", Mesh->NCellsAll, NVertLevels);
    SpecVolDisplaced =
        Array2DReal("SpecVolDisplaced", Mesh->NCellsAll, NVertLevels);
@@ -31,7 +31,7 @@ Eos::Eos(const std::string &Name_, ///< [in] Name for eos object
 
 } // end constructor
 
-// Initializes the Eos (Equation of Eos) class and its options.
+// Initializes the Eos (Equation of State) class and its options.
 // it ASSUMES that HorzMesh was initialized and initializes the Eos class by
 // using the default mesh, reading the config file, and setting parameters
 // for either a Linear or TEOS-10 equation.
@@ -69,13 +69,13 @@ int Eos::init() {
       }
       DefaultEos->EosChoice = EosType::Linear;
       Err                   = EosLinConfig.get("DRhoDT",
-                                            DefaultEos->computeSpecVolLinear.dRhodT);
+                                            DefaultEos->computeSpecVolLinear.DRhodT);
       if (Err != 0) {
          LOG_CRITICAL("Eos: Parameter Linear:DRhodT not found in EosLinConfig");
          return Err;
       }
       Err = EosLinConfig.get("DRhoDS",
-                          DefaultEos->computeSpecVolLinear.dRhodS);
+                          DefaultEos->computeSpecVolLinear.DRhodS);
       if (Err != 0) {
          LOG_CRITICAL("Eos: Parameter Linear:DRhodS not found in EosLinConfig");
          return Err;
@@ -87,7 +87,7 @@ int Eos::init() {
       }
    } else if ((EosTypeStr == "teos10") or (EosTypeStr == "teos-10") or
               (EosTypeStr == "TEOS-10")) {
-      DefaultEos->EosChoice = EosType::TEOS10Poly75t;
+      DefaultEos->EosChoice = EosType::Teos10Poly75t;
    } else {
       LOG_CRITICAL("Eos: Unknown EosType requested");
       Err = -1;
@@ -98,27 +98,27 @@ int Eos::init() {
 } // end init
 
 void Eos::computeSpecVol(const Array2DReal &SpecVol,
-                         const Array2DReal &ConservativeTemperature,
-                         const Array2DReal &AbsoluteSalinity,
+                         const Array2DReal &ConservTemp,
+                         const Array2DReal &AbsSalinity,
                          const Array2DReal &Pressure) const {
    OMEGA_SCOPE(LocSpecVol, SpecVol);
    OMEGA_SCOPE(LocComputeSpecVolLinear, computeSpecVolLinear);
-   OMEGA_SCOPE(LocComputeSpecVolTEOS10Poly75t, computeSpecVolTEOS10Poly75t);
+   OMEGA_SCOPE(LocComputeSpecVolTeos10Poly75t, computeSpecVolTeos10Poly75t);
    deepCopy(LocSpecVol, 0.0);
    if (EosChoice == EosType::Linear) {
       parallelFor(
           "eos-linear", {NCellsAll, NChunks},
           KOKKOS_LAMBDA(I4 ICell, I4 KChunk) {
              LocComputeSpecVolLinear(LocSpecVol, ICell, KChunk,
-                                     ConservativeTemperature, AbsoluteSalinity);
+                                     ConservTemp, AbsSalinity);
           });
-   } else if (EosChoice == EosType::TEOS10Poly75t) {
+   } else if (EosChoice == EosType::Teos10Poly75t) {
       parallelFor(
           "eos-teos10", {NCellsAll, NChunks},
           KOKKOS_LAMBDA(I4 ICell, I4 KChunk) {
-             LocComputeSpecVolTEOS10Poly75t(LocSpecVol, ICell, KChunk,
-                                            ConservativeTemperature,
-                                            AbsoluteSalinity, Pressure);
+             LocComputeSpecVolTeos10Poly75t(LocSpecVol, ICell, KChunk,
+                                            ConservTemp,
+                                            AbsSalinity, Pressure);
           });
    }
 }
