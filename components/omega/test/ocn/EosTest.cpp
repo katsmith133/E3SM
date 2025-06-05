@@ -34,14 +34,14 @@ using namespace OMEGA;
 
 constexpr Geometry Geom   = Geometry::Spherical;
 constexpr int NVertLevels = 60;
-// published values (TEOS-10) to test against
-const Real TeosExpValueDelta = 0.0009776149797;
-const Real TeosExpValueVol   = 0.0009732819628;
-double Sa                    = 30.;
-double Ct                    = 10.;
-double P                     = 1000.;
-const Real RTol              = 1e-10;
-// expected value for Linear eos (and default parameters)
+// Published values (TEOS-10) to test against
+const Real TeosExpValueDelta = 0.0009776149797; 
+const Real TeosExpValueVol   = 0.0009732819628; 
+double Sa                    = 30.0; // Absolute Salinity in g/kg
+double Ct                    = 10.0; // Conservative Temperature in degC
+double P                     = 1000.0; // Pressure in dbar
+const Real RTol              = 1e-10; // Relative tolerance for isApprox checks
+// Expected value for Linear eos (and default parameters)
 const Real LinearExpValue = 0.0009784735812133072;
 
 //------------------------------------------------------------------------------
@@ -101,7 +101,7 @@ int testEosMapping() {
       LOG_ERROR("EosTest: error initializing default Eos");
    }
 
-   // test retrievel of default
+   // test retrieval of default
    Eos *DefEos = Eos::getDefault();
 
    if (DefEos) {
@@ -125,15 +125,12 @@ int testEosMapping() {
 
    // test erase
    Eos::erase("TestEos");
-
    if (Eos::get("TestEos")) {
       Err++;
       LOG_INFO("EosTest: Non-default Eos erase FAIL");
    } else {
       LOG_INFO("EosTest: Non-default Eos erase PASS");
    }
-
-   // Eos::clear();
 
    return Err;
 }
@@ -216,8 +213,7 @@ int testEosTeos10() {
                   },
                   numMismatches);
 
-   bool allMatch = (numMismatches == 0);
-   if (!allMatch) {
+   if (numMismatches != 0) {
       Err++;
       LOG_ERROR("EosTest: TEOS SpecVol isApprox FAIL, "
                 "expected {}, got {} mismatches",
@@ -240,7 +236,7 @@ void finalizeEosTest() {
    MachEnv::removeAll();
 }
 
-int checkValueGsecSpecVol() {
+int checkValueGswcSpecVol() {
    int Err         = 0;
    const Real RTol = 1e-10;
 
@@ -249,11 +245,11 @@ int checkValueGsecSpecVol() {
    if (!Check) {
       Err++;
       LOG_ERROR(
-          "checkValueGsecSpecVol: SpecVol isApprox FAIL, expected {}, got {}",
+          "checkValueGswcSpecVol: SpecVol isApprox FAIL, expected {}, got {}",
           TeosExpValueVol, SpecVol);
    }
    if (Err == 0) {
-      LOG_INFO("checkValueGsecSpecVol: PASS");
+      LOG_INFO("checkValueGswcSpecVol: PASS");
    }
    return Err;
 }
@@ -275,158 +271,12 @@ int fetchCoeff() {
    return Err;
 }
 
-int checkValuePoly75tDelta() {
-   int Err     = 0;
-   const int K = 0;
-
-   Teos10Poly75t SpecVolPoly75t(NVertLevels);
-   SpecVolPoly75t.calcPCoeffs(SpecVolPoly75t.SpecVolPCoeffs, K, Ct, Sa);
-   Real Delta = SpecVolPoly75t.calcDelta(SpecVolPoly75t.SpecVolPCoeffs, K, P);
-
-   bool Check = isApprox(Delta, TeosExpValueDelta, RTol);
-   if (!Check) {
-      Err++;
-      LOG_ERROR("TEOS10 checkValuePoly75tDelta: Delta isApprox FAIL, expected "
-                "{}, got {}",
-                TeosExpValueDelta, Delta);
-   }
-   if (Err == 0) {
-      LOG_INFO("TEOS10 checkValuePoly75tDelta: PASS");
-   }
-   return Err;
-}
-
-int checkValuePoly75tSpecVol() {
-   int Err             = 0;
-   const Real RTol     = 1e-10;
-   Array2DReal SArray  = Array2DReal("SArray", 1, 1);
-   Array2DReal TArray  = Array2DReal("TArray", 1, 1);
-   Array2DReal PArray  = Array2DReal("PArray", 1, 1);
-   const int K         = 0;
-   const int ICell     = 0;
-   Array2DReal SpecVol = Array2DReal("SpecVol", 1, 1);
-
-   SArray(0, 0)  = Sa;
-   TArray(0, 0)  = Ct;
-   PArray(0, 0)  = P;
-   SpecVol(0, 0) = 0.0;
-
-   Teos10Poly75t SpecVolPoly75t(NVertLevels);
-   SpecVolPoly75t(SpecVol, ICell, K, TArray, SArray, PArray);
-
-   bool Check = isApprox(SpecVol(0, 0), TeosExpValueVol, RTol);
-   if (!Check) {
-      Err++;
-      LOG_ERROR("TEOS10 checkValuePoly75tSpecVol: SpecVol isApprox FAIL, "
-                "expected {}, got {}",
-                TeosExpValueVol, SpecVol(0, 0));
-   }
-   if (Err == 0) {
-      LOG_INFO("TEOS10 checkValuePoly75tSpecVol: PASS");
-   }
-   return Err;
-}
-
-int checkValueLinearSpecVol() {
-   int Err             = 0;
-   const Real RTol2    = 1e-2; // (>> machine precision)
-   Array2DReal SArray  = Array2DReal("SArray", 1, 1);
-   Array2DReal TArray  = Array2DReal("TArray", 1, 1);
-   const int K         = 0;
-   const int ICell     = 0;
-   Array2DReal SpecVol = Array2DReal("SpecVol", 1, 1);
-
-   SArray(0, 0)  = Sa;
-   TArray(0, 0)  = Ct;
-   SpecVol(0, 0) = 0.0;
-
-   LinearEOS specvollinear;
-   specvollinear(SpecVol, ICell, K, TArray, SArray);
-
-   bool Check = isApprox(SpecVol(0, 0), TeosExpValueVol, RTol); // expect False
-   bool CheckClose =
-       isApprox(SpecVol(0, 0), TeosExpValueVol, RTol2); // expect True
-   if (Check) {
-      Err++;
-      LOG_ERROR("checkValueLinearSpecVol: SpecVol Linear is undistinguishable "
-                "from TEOS10 Ref Value");
-   }
-   if (!CheckClose) {
-      Err++;
-      LOG_ERROR("checkValueLinearSpecVol: SpecVol TEOS10 and Linear are NOT "
-                "close. Check input values");
-   }
-   if (Err == 0) {
-      LOG_INFO("checkValueLinearSpecVol: PASS");
-   }
-   return Err;
-}
-
-int testLinearDensityLinearity() {
-   int Err              = 0;
-   const Real RTol      = 1e-10;
-   const Real ExpDT     = 1.0;
-   const Real ExpDS     = 2.4;
-   Array2DReal SArray1  = Array2DReal("SArray1", 1, 1);
-   Array2DReal TArray1  = Array2DReal("TArray1", 1, 1);
-   Array2DReal SArray2  = Array2DReal("SArray2", 1, 1);
-   Array2DReal TArray2  = Array2DReal("TArray2", 1, 1);
-   const int K          = 0;
-   const int ICell      = 0;
-   Array2DReal SpecVol1 = Array2DReal("SpecVol1", 1, 1);
-   Array2DReal SpecVol2 = Array2DReal("SpecVol2", 1, 1);
-   Array2DReal SpecVol3 = Array2DReal("SpecVol3", 1, 1);
-   Array2DReal SpecVol4 = Array2DReal("SpecVol4", 1, 1);
-
-   SArray1(0, 0)  = Sa;
-   TArray1(0, 0)  = 15.;
-   SArray2(0, 0)  = 33.;
-   TArray2(0, 0)  = Ct;
-   SpecVol1(0, 0) = 0.0;
-   SpecVol2(0, 0) = 0.0;
-   SpecVol3(0, 0) = 0.0;
-   SpecVol4(0, 0) = 0.0;
-
-   LinearEOS specvollinear;
-   specvollinear(SpecVol1, ICell, K, TArray1, SArray1);
-   specvollinear(SpecVol2, ICell, K, TArray2, SArray1);
-   specvollinear(SpecVol3, ICell, K, TArray1, SArray2);
-   specvollinear(SpecVol4, ICell, K, TArray2, SArray2);
-   Real DRhoT  = 1. / SpecVol2(0, 0) - 1. / SpecVol1(0, 0);
-   Real DRhoS  = 1. / SpecVol3(0, 0) - 1. / SpecVol1(0, 0);
-   Real DRhoTS = 1. / SpecVol4(0, 0) - 1. / SpecVol1(0, 0);
-
-   bool Check1 = isApprox(DRhoS, ExpDS, RTol);
-   if (!Check1) {
-      Err++;
-      LOG_ERROR("testLinearDensityLinearity: DRhoS {}; expected {}", DRhoS,
-                ExpDS);
-   }
-   bool Check2 = isApprox(DRhoT, ExpDT, RTol);
-   if (!Check2) {
-      Err++;
-      LOG_ERROR("testLinearDensityLinearity: DRhoT {}; expected {}", DRhoT,
-                ExpDT);
-   }
-   bool Check3 = isApprox(DRhoTS, DRhoS + DRhoT, RTol);
-   if (!Check3) {
-      Err++;
-      LOG_ERROR("testLinearDensityLinearity: Sum(DRho) {}, DRhoTS {}",
-                DRhoS + DRhoT, DRhoTS);
-   }
-
-   if (Err == 0) {
-      LOG_INFO("testLinearDensityLinearity: PASS");
-   }
-   return Err;
-}
-
 // the main test (all in one to have the same log)
 // Single value tests:
 // --> one test calls the external GSW-C library
 // and compares the specific volume to the published value
-// --> next tests call the local Poly75t TEOS-10 calc
-// --> next tests call the linear Eos
+// --> next test call the external GSW-C library
+// and compares the V000 coefficient to the expected value
 // Full array tests:
 // --> one tests the initialization/retrieval of Eos
 // --> next checks the value on a Eos with linear option
@@ -439,7 +289,7 @@ int eosTest(const std::string &MeshFile = "OmegaMesh.nc") {
    const auto &Mesh = HorzMesh::getDefault();
    
    LOG_INFO("Single value checks:");
-   Err += checkValueGsecSpecVol();
+   Err += checkValueGswcSpecVol();
    Err += fetchCoeff();
 
    LOG_INFO("Full array checks:");

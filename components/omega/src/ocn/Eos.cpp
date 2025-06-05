@@ -4,32 +4,26 @@
 
 namespace OMEGA {
 
+// Static member definitions
 Eos *Eos::DefaultEos = nullptr;
 std::map<std::string, std::unique_ptr<Eos>> Eos::AllEos;
 
-Teos10Poly75t::Teos10Poly75t(int NVertLevels) : NVertLevels(NVertLevels) {
-   SpecVolPCoeffs = Array2DReal("SpecVolPCoeffs", 6, VecLength);
-}
-
-LinearEOS::LinearEOS() {}
-
-Eos::Eos(const std::string &Name_, ///< [in] Name for eos object
+Eos::Eos(const std::string &Name, ///< [in] Name for eos object
          const HorzMesh *Mesh,     ///< [in] Horizontal mesh
          int NVertLevels           ///< [in] Number of vertical levels
          )
-    : computeSpecVolTeos10Poly75t(NVertLevels) {
-   SpecVol = Array2DReal("SpecVol", Mesh->NCellsAll, NVertLevels);
-   SpecVolDisplaced =
-       Array2DReal("SpecVolDisplaced", Mesh->NCellsAll, NVertLevels);
-   // Array dimension lengths
-   NCellsAll = Mesh->NCellsAll;
-   NChunks   = NVertLevels / VecLength;
-   Name      = Name_;
-
-   // Register fields and metadata for IO
-   defineFields();
-
-} // end constructor
+    : 
+      SpecVol("SpecVol", Mesh->NCellsAll, NVertLevels),
+      SpecVolDisplaced("SpecVolDisplaced", Mesh->NCellsAll, NVertLevels),
+      SpecVolPCoeffs("SpecVolPCoeffs", 6, VecLength),
+      Name(Name),
+      NCellsAll(Mesh->NCellsAll),
+      NChunks(NVertLevels / VecLength),
+      NVertLevels(NVertLevels)
+{
+    // Optionally set EosChoice from config or arguments
+    defineFields();
+}
 
 // Initializes the Eos (Equation of State) class and its options.
 // it ASSUMES that HorzMesh was initialized and initializes the Eos class by
@@ -68,20 +62,17 @@ int Eos::init() {
          return Err;
       }
       DefaultEos->EosChoice = EosType::Linear;
-      Err                   = EosLinConfig.get("DRhoDT",
-                                            DefaultEos->computeSpecVolLinear.DRhodT);
+      Err                   = EosLinConfig.get("DRhoDT", DefaultEos->DRhodT);
       if (Err != 0) {
          LOG_CRITICAL("Eos: Parameter Linear:DRhodT not found in EosLinConfig");
          return Err;
       }
-      Err = EosLinConfig.get("DRhoDS",
-                          DefaultEos->computeSpecVolLinear.DRhodS);
+      Err = EosLinConfig.get("DRhoDS", DefaultEos->DRhodS);
       if (Err != 0) {
          LOG_CRITICAL("Eos: Parameter Linear:DRhodS not found in EosLinConfig");
          return Err;
       }
-      Err = EosLinConfig.get("RhoT0S0",
-                          DefaultEos->computeSpecVolLinear.RhoT0S0);
+      Err = EosLinConfig.get("RhoT0S0", DefaultEos->RhoT0S0);
       if (Err != 0) {
          LOG_CRITICAL("Eos: Parameter Linear:RhoT0S0 not found in EosLinConfig");
       }
@@ -102,21 +93,19 @@ void Eos::computeSpecVol(const Array2DReal &SpecVol,
                          const Array2DReal &AbsSalinity,
                          const Array2DReal &Pressure) const {
    OMEGA_SCOPE(LocSpecVol, SpecVol);
-   OMEGA_SCOPE(LocComputeSpecVolLinear, computeSpecVolLinear);
-   OMEGA_SCOPE(LocComputeSpecVolTeos10Poly75t, computeSpecVolTeos10Poly75t);
    deepCopy(LocSpecVol, 0.0);
    if (EosChoice == EosType::Linear) {
       parallelFor(
           "eos-linear", {NCellsAll, NChunks},
           KOKKOS_LAMBDA(I4 ICell, I4 KChunk) {
-             LocComputeSpecVolLinear(LocSpecVol, ICell, KChunk,
+             computeSpecVolLinear(LocSpecVol, ICell, KChunk,
                                      ConservTemp, AbsSalinity);
           });
    } else if (EosChoice == EosType::Teos10Poly75t) {
       parallelFor(
           "eos-teos10", {NCellsAll, NChunks},
           KOKKOS_LAMBDA(I4 ICell, I4 KChunk) {
-             LocComputeSpecVolTeos10Poly75t(LocSpecVol, ICell, KChunk,
+             computeSpecVolTeos10(LocSpecVol, ICell, KChunk,
                                             ConservTemp,
                                             AbsSalinity, Pressure);
           });
@@ -205,8 +194,7 @@ void Eos::defineFields() {
 
 } // end defineIOFields
 
-//------------------------------------------------------------------------------
-// Destroys the eos class
+// Destroy the eos class
 Eos::~Eos() {
 
    // Kokkos arrays removed when no longer in scope
@@ -223,19 +211,15 @@ Eos::~Eos() {
 
 } // end destructor
 
-//------------------------------------------------------------------------------
-// Removes all eos instances before exit
+// Remove all eos instances before exit
 void Eos::clear() { AllEos.clear(); } // end clear
 
-//------------------------------------------------------------------------------
-// Removes eos from list by name
+// Remove eos from list by name
 void Eos::erase(const std::string &Name) { AllEos.erase(Name); } // end erase
 
-//------------------------------------------------------------------------------
 // Get default eos
 Eos *Eos::getDefault() { return Eos::DefaultEos; } // end get default
 
-//------------------------------------------------------------------------------
 // Get eos by name
 Eos *Eos::get(const std::string &Name ///< [in] Name of eos
 ) {
@@ -245,7 +229,7 @@ Eos *Eos::get(const std::string &Name ///< [in] Name of eos
    if (it != AllEos.end()) {
       return it->second.get();
    } else {
-      LOG_ERROR("Eos::get: Attempt to retrieve non-existent eos:");
+      LOG_ERROR("Eos::get: Attempt to retrieve non-existent Eos:");
       LOG_ERROR("{} has not been defined or has been removed", Name);
       return nullptr;
    }
