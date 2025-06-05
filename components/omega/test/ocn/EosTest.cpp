@@ -32,17 +32,17 @@
 
 using namespace OMEGA;
 
-constexpr Geometry Geom   = Geometry::Spherical;
-constexpr int NVertLevels = 60;
+constexpr Geometry Geom      = Geometry::Spherical;
+constexpr int NVertLevels    = 60;
 // Published values (TEOS-10) to test against
-const Real TeosExpValueDelta = 0.0009776149797; 
-const Real TeosExpValueVol   = 0.0009732819628; 
+const Real TeosExpValue      = 0.0009732819628; // Expected value for TEOS-10 eos
+const Real LinearExpValue    = 0.0009784735812133072; // Expected value for Linear eos
 double Sa                    = 30.0; // Absolute Salinity in g/kg
 double Ct                    = 10.0; // Conservative Temperature in degC
 double P                     = 1000.0; // Pressure in dbar
+const I4 KDisp               = 1; // Displace parcel to K=1 for TEOS-10 eos
 const Real RTol              = 1e-10; // Relative tolerance for isApprox checks
 // Expected value for Linear eos (and default parameters)
-const Real LinearExpValue = 0.0009784735812133072;
 
 //------------------------------------------------------------------------------
 // The initialization routine for Eos testing. It calls various
@@ -207,7 +207,7 @@ int testEosTeos10() {
    Array2DReal SpecVol = TestEos->SpecVol;
    parallelReduce("CheckSpecVolMatrix-Teos", {Mesh->NCellsAll, NVertLevels},
                   KOKKOS_LAMBDA(int i, int j, int &localCount) {
-                     if (!isApprox(SpecVol(i, j), TeosExpValueVol, RTol)) {
+                     if (!isApprox(SpecVol(i, j), TeosExpValue, RTol)) {
                         localCount++;
                      }
                   },
@@ -216,14 +216,60 @@ int testEosTeos10() {
    if (numMismatches != 0) {
       Err++;
       LOG_ERROR("EosTest: TEOS SpecVol isApprox FAIL, "
-                "expected {}, got {} mismatches",
-                TeosExpValueVol, numMismatches);
+                "expected {}, got {} with {} mismatches",
+                TeosExpValue, SpecVol(1,1), numMismatches);
    }
    if (Err == 0) {
       LOG_INFO("EosTest SpecVolCalc TEOS-10: PASS");
    }
 
    Eos::erase("TeosEos");
+   return Err;
+}
+
+int testEosTeos10Displaced() {
+   int Err          = 0;
+   const auto *Mesh = HorzMesh::getDefault();
+   // create Eos to test
+   Eos::create("TeosDispEos", Mesh, NVertLevels);
+   Eos *TestEos       = Eos::get("TeosDispEos");
+   TestEos->EosChoice = EosType::Teos10Poly75t;
+
+   // create ocean state array
+   Array2DReal SArray = Array2DReal("SArray", Mesh->NCellsAll, NVertLevels);
+   Array2DReal TArray = Array2DReal("TArray", Mesh->NCellsAll, NVertLevels);
+   Array2DReal PArray = Array2DReal("PArray", Mesh->NCellsAll, NVertLevels);
+   // Use Kokkos::deep_copy to fill the entire view with the ref value
+   deepCopy(SArray, Sa);
+   deepCopy(TArray, Ct);
+   deepCopy(PArray, P);
+   deepCopy(TestEos->SpecVol, 0.0);
+
+   // Key calculation
+   TestEos->computeSpecVolDisp(TestEos->SpecVolDisplaced, TArray, SArray, PArray, KDisp);
+
+   // check on all array values
+   int numMismatches = 0;
+   Array2DReal SpecVolDisplaced = TestEos->SpecVolDisplaced;
+   parallelReduce("CheckSpecVolDispMatrix-Teos", {Mesh->NCellsAll, NVertLevels},
+                  KOKKOS_LAMBDA(int i, int j, int &localCount) {
+                     if (!isApprox(SpecVolDisplaced(i, j), TeosExpValue, RTol)) {
+                        localCount++;
+                     }
+                  },
+                  numMismatches);
+
+   if (numMismatches != 0) {
+      Err++;
+      LOG_ERROR("EosTest: TEOS SpecVolDisp isApprox FAIL, "
+                "expected {}, got {} with {} mismatches",
+                TeosExpValue, SpecVolDisplaced(1,1), numMismatches);
+   }
+   if (Err == 0) {
+      LOG_INFO("EosTest SpecVolCalcDisp TEOS-10: PASS");
+   }
+
+   Eos::erase("TeosDispEos");
    return Err;
 }
 
@@ -241,12 +287,12 @@ int checkValueGswcSpecVol() {
    const Real RTol = 1e-10;
 
    double SpecVol = gsw_specvol(Sa, Ct, P);
-   bool Check = isApprox(SpecVol, TeosExpValueVol, RTol);
+   bool Check = isApprox(SpecVol, TeosExpValue, RTol);
    if (!Check) {
       Err++;
       LOG_ERROR(
           "checkValueGswcSpecVol: SpecVol isApprox FAIL, expected {}, got {}",
-          TeosExpValueVol, SpecVol);
+          TeosExpValue, SpecVol);
    }
    if (Err == 0) {
       LOG_INFO("checkValueGswcSpecVol: PASS");
@@ -281,6 +327,7 @@ int fetchCoeff() {
 // --> one tests the initialization/retrieval of Eos
 // --> next checks the value on a Eos with linear option
 // --> next checks the value on a Eos with TEOS-10 option
+// --> next checks the value on a Eos with TEOS-10 displaced option
 int eosTest(const std::string &MeshFile = "OmegaMesh.nc") {
    int Err = initEosTest(MeshFile);
    if (Err != 0) {
@@ -296,6 +343,7 @@ int eosTest(const std::string &MeshFile = "OmegaMesh.nc") {
    Err += testEosMapping();
    Err += testEosLinear();
    Err += testEosTeos10();
+   Err += testEosTeos10Displaced();
 
    if (Err == 0) {
       LOG_INFO("EosTest: Successful completion");

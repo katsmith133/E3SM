@@ -49,6 +49,12 @@ class Eos {
                        const Array2DReal &AbsSalinity,
                        const Array2DReal &Pressure) const;
 
+   void computeSpecVolDisp(const Array2DReal &SpecVol,
+                       const Array2DReal &ConservTemp,
+                       const Array2DReal &AbsSalinity,
+                       const Array2DReal &Pressure,
+                       I4 KDisp) const;
+
    // Static management functions
    static I4 init();
    static Eos *create(const std::string &Name, const HorzMesh *Mesh,
@@ -103,38 +109,32 @@ class Eos {
                                              I4 ICell, I4 KChunk,
                                              const Array2DReal &ConservTemp,
                                              const Array2DReal &AbsSalinity,
-                                             const Array2DReal &Pressure) const {
+                                             const Array2DReal &Pressure,
+                                             I4 KDisp) const {
       const I4 KStart = KChunk * VecLength;
       for (int KVec = 0; KVec < VecLength; ++KVec) {
          const I4 K = KStart + KVec;
          calcPCoeffs(SpecVolPCoeffs, KVec, ConservTemp(ICell, K), AbsSalinity(ICell, K));
          PCoeffsInit = true;
-         SpecVol(ICell, K) =
-             calcRefProfile(Pressure(ICell, K)) +
-             calcDelta(SpecVolPCoeffs, KVec, Pressure(ICell, K));
+         if (KDisp == 0) {
+            // No displacement
+            SpecVol(ICell, K) = calcRefProfile(Pressure(ICell, K)) +
+                                calcDelta(SpecVolPCoeffs, KVec, Pressure(ICell, K));
+         } else
+            // Displacement, use the displaced pressure
+            // Check to make sure KDisp is within bounds 
+            // (change bounds to minLevelCell and 
+            // maxLevelCell when the become available?)
+            if (KDisp >= NVertLevels || KDisp < 0) {
+               LOG_ERROR("Eos: KDisp {} is either < 0 or out of bounds"
+                         "for NVertLevels {}", KDisp, NVertLevels);
+            }
+            SpecVol(ICell, K) =
+                calcRefProfile(Pressure(ICell, KDisp)) +
+                calcDelta(SpecVolPCoeffs, KVec, Pressure(ICell, KDisp));
+         }
       }
-   }
-
-   // Calculate displaced specific volume
-   KOKKOS_FUNCTION void calcDisplacedSpecVol(const Array2DReal &SpecVolDisplaced, 
-                                             const I4 ICell, const I4 KChunk, 
-                                             const Array2DReal &Pressure) const {
-      // Checking to make sure calcPCoeffs was called already
-      if (!PCoeffsInit) {
-         LOG_ERROR("Eos: calcPCoeffs must be called before calcDisplacedSpecVol");
-         return;
-      }
-
-      OMEGA_SCOPE(LocSpecVolPCoeffs, SpecVolPCoeffs);
-      const I4 KStart = KChunk * VecLength;
-      for (int KVec = 0; KVec < VecLength; ++KVec) {
-         const I4 K    = KStart + KVec;
-         const I4 KTmp = Kokkos::min(K + 1, NVertLevels);
-         SpecVolDisplaced(ICell, K) =
-             calcRefProfile(Pressure(ICell, KTmp)) +
-             calcDelta(LocSpecVolPCoeffs, KVec, Pressure(ICell, KTmp));
-      }
-   }
+   
 
    // TEOS-10 helpers
    // Calculate pressure coefficients

@@ -94,6 +94,7 @@ void Eos::computeSpecVol(const Array2DReal &SpecVol,
                          const Array2DReal &Pressure) const {
    OMEGA_SCOPE(LocSpecVol, SpecVol);
    deepCopy(LocSpecVol, 0.0);
+   I4 KDisp = 0; // No displacement in this case
    if (EosChoice == EosType::Linear) {
       parallelFor(
           "eos-linear", {NCellsAll, NChunks},
@@ -106,8 +107,30 @@ void Eos::computeSpecVol(const Array2DReal &SpecVol,
           "eos-teos10", {NCellsAll, NChunks},
           KOKKOS_LAMBDA(I4 ICell, I4 KChunk) {
              computeSpecVolTeos10(LocSpecVol, ICell, KChunk,
-                                            ConservTemp,
-                                            AbsSalinity, Pressure);
+                                            ConservTemp, AbsSalinity, 
+                                            Pressure, KDisp);
+          });
+   }
+}
+
+void Eos::computeSpecVolDisp(const Array2DReal &SpecVolDisplaced,
+                         const Array2DReal &ConservTemp,
+                         const Array2DReal &AbsSalinity,
+                         const Array2DReal &Pressure,
+                         I4 KDisp) const {
+   OMEGA_SCOPE(LocSpecVolDisplaced, SpecVolDisplaced);
+   deepCopy(LocSpecVolDisplaced, 0.0);
+   if (EosChoice == EosType::Linear) {
+      LOG_ERROR(
+          "Eos::computeSpecVolDisp called with Linear EOS."
+          "This is not supported, use Teos10Poly75t instead.");
+   } else if (EosChoice == EosType::Teos10Poly75t) {
+      parallelFor(
+          "eos-teos10", {NCellsAll, NChunks},
+          KOKKOS_LAMBDA(I4 ICell, I4 KChunk) {
+             computeSpecVolTeos10(LocSpecVolDisplaced, ICell, KChunk,
+                                            ConservTemp, AbsSalinity, 
+                                            Pressure, KDisp);
           });
    }
 }
