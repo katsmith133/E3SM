@@ -273,7 +273,7 @@ $$
 \tilde{w} = \frac{d{\tilde z}}{dt} = \frac{\rho}{\rho_0}\frac{dz}{dt} = \frac{\rho}{\rho_0} \, w.
 $$ (def-pseudo-velocity)
 
-As above, $\tilde{w}$ has identical units and very similar values to $\tilde{w}$. But in a non-Boussinesq model, it is the vertical *mass* transport that is the physically relevant quantity, not the volume transport. To this end, $\rho w$ is the mass transport per unit area in kg/m$^2$/s. The pseudo-velocity *is* the Eulerian mass transport, but with a convenient normalization of $\rho_0$.
+As above, $\tilde{w}$ has identical units and very similar values to $w$. But in a non-Boussinesq model, it is the vertical *mass* transport that is the physically relevant quantity, not the volume transport. To this end, $\rho w$ is the mass transport per unit area in kg/m$^2$/s. The pseudo-velocity *is* the Eulerian mass transport, but with a convenient normalization of $\rho_0$.
 
 [Griffies 2018](https://www.amazon.com/Fundamentals-Climate-Models-Stephen-Griffies-ebook/dp/B07DMWP8L7) p. 37  argues for the use of pseudo-velocities, which he calls the density-weighted velocity, for non-Boussinesq models.
 Griffies recommends a value of $\rho_0=1035$ kg/m$^3$, following p. 47 of [Gill (1982)](https://www.amazon.com/Atmosphere-Ocean-Dynamics-International-Geophysics-30/dp/0122835220), because ocean density varies less than 2% from that value.
