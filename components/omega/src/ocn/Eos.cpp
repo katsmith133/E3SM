@@ -4,10 +4,7 @@
 
 namespace OMEGA {
 
-// Static member definitions
-Eos *Eos::DefaultEos = nullptr;
-std::map<std::string, std::unique_ptr<Eos>> Eos::AllEos;
-
+/// Constructor for Eos
 Eos::Eos(const std::string &Name, ///< [in] Name for eos object
          const HorzMesh *Mesh,     ///< [in] Horizontal mesh
          int NVertLevels           ///< [in] Number of vertical levels
@@ -25,62 +22,87 @@ Eos::Eos(const std::string &Name, ///< [in] Name for eos object
     defineFields();
 }
 
-// Initializes the Eos (Equation of State) class and its options.
-// it ASSUMES that HorzMesh was initialized and initializes the Eos class by
-// using the default mesh, reading the config file, and setting parameters
-// for either a Linear or TEOS-10 equation.
-// Returns 0 on success, or an error code if any required option is missing.
+/// Destructor for Eos 
+Eos::~Eos() {}
+
+/// Instance management
+Eos* Eos::instance_ = nullptr;
+
+/// Get instance of Eos
+Eos* Eos::getInstance(const std::string &Name, const HorzMesh *Mesh, int NVertLevels) {
+   /// Create instance if it doesn't exist
+   if (!instance_) {
+       instance_ = new Eos(Name, Mesh, NVertLevels);
+   }
+   return instance_;
+}
+
+/// Destroy instance of Eos
+void Eos::destroyInstance() {
+   delete instance_;
+   instance_ = nullptr;
+}
+
+/// Initializes the Eos (Equation of State) class and its options.
+/// it ASSUMES that HorzMesh was initialized and initializes the Eos class by
+/// using the default mesh, reading the config file, and setting parameters
+/// for either a Linear or TEOS-10 equation.
+/// Returns 0 on success, or an error code if any required option is missing.
 int Eos::init() {
 
    int Err               = 0;
    HorzMesh *DefHorzMesh = HorzMesh::getDefault();
    I4 NVertLevels        = DefHorzMesh->NVertLevels;
 
-   // Create default eos
-   Eos::DefaultEos = create("Default", DefHorzMesh, NVertLevels);
+   /// Create default eos
+   Eos* eos = Eos::getInstance("Default", DefHorzMesh, NVertLevels);
 
-   // Get EosConfig group
+   /// Get EosConfig group from Omega config
    Config *OmegaConfig = Config::getOmegaConfig();
    Config EosConfig("Eos");
    Err = OmegaConfig->get(EosConfig);
    if (Err != 0) {
-      LOG_CRITICAL("Eos: Eos group not found in Config");
-      return Err;
-   }
-   std::string EosTypeStr;
-   Err = EosConfig.get("EosType", EosTypeStr);
-   if (Err != 0) {
-      LOG_CRITICAL("Eos: EosType subgroup not found in EosConfig");
+      LOG_CRITICAL("Eos::init: Eos group not found in Config");
       return Err;
    }
 
+   /// Get EosType from EosConfig
+   /// and set the EosChoice accordingly
+   std::string EosTypeStr;
+   Err = EosConfig.get("EosType", EosTypeStr);
+   if (Err != 0) {
+      LOG_CRITICAL("Eos::init: EosType subgroup not found in EosConfig");
+      return Err;
+   }
+
+   /// Set EosChoice based on EosTypeStr
    if (EosTypeStr == "Linear" or EosTypeStr == "linear") {
       Config EosLinConfig("Linear");
       Err = EosConfig.get(EosLinConfig);
       if (Err != 0) {
-         LOG_CRITICAL("Eos: Linear subgroup not found in EosConfig");
+         LOG_CRITICAL("Eos::init: Linear subgroup not found in EosConfig");
          return Err;
       }
-      DefaultEos->EosChoice = EosType::Linear;
-      Err                   = EosLinConfig.get("DRhoDT", DefaultEos->DRhodT);
+      eos->EosChoice = EosType::Linear;
+      Err                   = EosLinConfig.get("DRhoDT", eos->DRhodT);
       if (Err != 0) {
-         LOG_CRITICAL("Eos: Parameter Linear:DRhodT not found in EosLinConfig");
+         LOG_CRITICAL("Eos::init: Parameter Linear:DRhodT not found in EosLinConfig");
          return Err;
       }
-      Err = EosLinConfig.get("DRhoDS", DefaultEos->DRhodS);
+      Err = EosLinConfig.get("DRhoDS", eos->DRhodS);
       if (Err != 0) {
-         LOG_CRITICAL("Eos: Parameter Linear:DRhodS not found in EosLinConfig");
+         LOG_CRITICAL("Eos::init: Parameter Linear:DRhodS not found in EosLinConfig");
          return Err;
       }
-      Err = EosLinConfig.get("RhoT0S0", DefaultEos->RhoT0S0);
+      Err = EosLinConfig.get("RhoT0S0", eos->RhoT0S0);
       if (Err != 0) {
-         LOG_CRITICAL("Eos: Parameter Linear:RhoT0S0 not found in EosLinConfig");
+         LOG_CRITICAL("Eos::init: Parameter Linear:RhoT0S0 not found in EosLinConfig");
       }
    } else if ((EosTypeStr == "teos10") or (EosTypeStr == "teos-10") or
               (EosTypeStr == "TEOS-10")) {
-      DefaultEos->EosChoice = EosType::Teos10Poly75t;
+      eos->EosChoice = EosType::Teos10Poly75t;
    } else {
-      LOG_CRITICAL("Eos: Unknown EosType requested");
+      LOG_CRITICAL("Eos::init: Unknown EosType requested");
       Err = -1;
       return Err;
    }
@@ -88,13 +110,15 @@ int Eos::init() {
    return Err;
 } // end init
 
+/// Compute specific volume for all cells/levels (no displacement)
 void Eos::computeSpecVol(const Array2DReal &SpecVol,
                          const Array2DReal &ConservTemp,
                          const Array2DReal &AbsSalinity,
                          const Array2DReal &Pressure) const {
-   OMEGA_SCOPE(LocSpecVol, SpecVol);
+   OMEGA_SCOPE(LocSpecVol, SpecVol); /// Create a local view for computation
    deepCopy(LocSpecVol, 0.0);
-   I4 KDisp = 0; // No displacement in this case
+   I4 KDisp = 0; /// No displacement in this case
+   /// Dispatch to the correct EOS calculation
    if (EosChoice == EosType::Linear) {
       parallelFor(
           "eos-linear", {NCellsAll, NChunks},
@@ -111,15 +135,18 @@ void Eos::computeSpecVol(const Array2DReal &SpecVol,
                                             Pressure, KDisp);
           });
    }
+   deepCopy(SpecVol, LocSpecVol); /// Copy result back to output view
 }
 
+/// Compute displaced specific volume (for vertical displacement)
 void Eos::computeSpecVolDisp(const Array2DReal &SpecVolDisplaced,
                          const Array2DReal &ConservTemp,
                          const Array2DReal &AbsSalinity,
                          const Array2DReal &Pressure,
                          I4 KDisp) const {
-   OMEGA_SCOPE(LocSpecVolDisplaced, SpecVolDisplaced);
+   OMEGA_SCOPE(LocSpecVolDisplaced, SpecVolDisplaced); /// Local view for computation
    deepCopy(LocSpecVolDisplaced, 0.0);
+   /// Only TEOS-10 supports displaced calculation
    if (EosChoice == EosType::Linear) {
       LOG_ERROR(
           "Eos::computeSpecVolDisp called with Linear EOS."
@@ -133,14 +160,15 @@ void Eos::computeSpecVolDisp(const Array2DReal &SpecVolDisplaced,
                                             Pressure, KDisp);
           });
    }
+   deepCopy(SpecVolDisplaced, LocSpecVolDisplaced); /// Copy result back to output view
 }
 
-//------------------------------------------------------------------------------
-// Define IO fields and metadata
+/// Define IO fields and metadata for output
 void Eos::defineFields() {
 
    int Err = 0;
 
+   /// Set field names (append Name if not default)
    SpecVolFldName          = "SpecVol";
    SpecVolDisplacedFldName = "SpecVolDisplaced";
    if (Name != "Default") {
@@ -148,34 +176,36 @@ void Eos::defineFields() {
       SpecVolDisplacedFldName.append(Name);
    }
 
-   // Create fields for state variables
+   /// Create fields for state variables
    int NDims = 2;
    std::vector<std::string> DimNames(NDims);
    DimNames[0] = "NCells";
    DimNames[1] = "NVertLevels";
 
+   /// Create and register the specific volume field
    auto SpecVolField =
        Field::create(SpecVolFldName,                   // Field name
-                     "Layer-averaged Specific Volume", /// long Name
-                     "m3 kg-1",                        // units
-                     "sea_water_specific_volume",      // CF-ish Name
-                     0.0,                              // min valid value
-                     9.99E+30,                         // max valid value
-                     -9.99E+30, // scalar used for undefined entries
-                     NDims,     // number of dimensions
-                     DimNames   // dimension names
+                     "Layer-averaged Specific Volume",  // Long Name
+                     "m3 kg-1",                        // Units
+                     "sea_water_specific_volume",       // CF-ish Name
+                     0.0,                              // Min valid value
+                     9.99E+30,                         // Max valid value
+                     -9.99E+30,                        // Scalar used for undefined entries
+                     NDims,                            // Number of dimensions
+                     DimNames                          // Dimension names
        );
+   /// Create and register the displaced specific volume field
    auto SpecVolDisplacedField =
-       Field::create(SpecVolDisplacedFldName, // Field name
+       Field::create(SpecVolDisplacedFldName,                  // Field name
                      "Specific Volume displaced adiabatically "
-                     "to 1 layer below",                    /// long Name
-                     "m3 kg-1",                             // units
-                     "sea_water_specific_volume_displaced", // CF-ish Name
-                     0.0,                                   // min valid value
-                     9.99E+30,                              // max valid value
-                     -9.99E+30, // scalar used for undefined entried
-                     NDims,     // number of dimensions
-                     DimNames   // dimension names
+                     "to specified layer",                      // long Name
+                     "m3 kg-1",                                // Units
+                     "sea_water_specific_volume_displaced",     // CF-ish Name
+                     0.0,                                      // Min valid value
+                     9.99E+30,                                 // Max valid value
+                     -9.99E+30,                                // Scalar used for undefined entried
+                     NDims,                                    // Number of dimensions
+                     DimNames                                  // Dimension names
        );
 
    // Create a field group for the eos-specific state fields
@@ -185,78 +215,25 @@ void Eos::defineFields() {
    }
    auto EosGroup = FieldGroup::create(EosGroupName);
 
-   // Add restart group if needed
-   if (!FieldGroup::exists("Restart"))
-      auto RestartGroup = FieldGroup::create("Restart");
-
+   // Add fields to the EOS group
    Err = EosGroup->addField(SpecVolDisplacedFldName);
    if (Err != 0)
-      LOG_ERROR("Error adding {} to field group {}", SpecVolDisplacedFldName,
-                EosGroupName);
+      LOG_ERROR("Eos::defineFields: Error adding {} to field group {}", 
+                SpecVolDisplacedFldName, EosGroupName);
    Err = EosGroup->addField(SpecVolFldName);
    if (Err != 0)
-      LOG_ERROR("Error adding {} to field group {}", SpecVolFldName,
-                EosGroupName);
+      LOG_ERROR("Eos::defineFields: Error adding {} to field group {}", 
+                SpecVolFldName, EosGroupName);
 
-   Err = FieldGroup::addFieldToGroup(SpecVolDisplacedFldName, "Restart");
-   if (Err != 0)
-      LOG_ERROR("Error adding {} to Restart field group",
-                SpecVolDisplacedFldName);
-   Err = FieldGroup::addFieldToGroup(SpecVolFldName, "Restart");
-   if (Err != 0)
-      LOG_ERROR("Error adding {} to Restart field group", SpecVolFldName);
-
-   // Associate Field with data
+   // Attach Kokkos views to the fields
    Err = SpecVolDisplacedField->attachData<Array2DReal>(SpecVolDisplaced);
    if (Err != 0)
-      LOG_ERROR("Error attaching data array to field {}",
+      LOG_ERROR("Eos::defineFields: Error attaching data array to field {}",
                 SpecVolDisplacedFldName);
    Err = SpecVolField->attachData<Array2DReal>(SpecVol);
    if (Err != 0)
-      LOG_ERROR("Error attaching data array to field {}", SpecVolFldName);
+      LOG_ERROR("Eos::defineFields: Error attaching data array to field {}", SpecVolFldName);
 
 } // end defineIOFields
-
-// Destroy the eos class
-Eos::~Eos() {
-
-   // Kokkos arrays removed when no longer in scope
-   int Err;
-   Err = FieldGroup::destroy(EosGroupName);
-   if (Err != 0)
-      LOG_ERROR("Error removing FieldGroup {}", EosGroupName);
-   Err = Field::destroy(SpecVolFldName);
-   if (Err != 0)
-      LOG_ERROR("Error removing Field {}", SpecVolFldName);
-   Err = Field::destroy(SpecVolDisplacedFldName);
-   if (Err != 0)
-      LOG_ERROR("Error removing Field {}", SpecVolDisplacedFldName);
-
-} // end destructor
-
-// Remove all eos instances before exit
-void Eos::clear() { AllEos.clear(); } // end clear
-
-// Remove eos from list by name
-void Eos::erase(const std::string &Name) { AllEos.erase(Name); } // end erase
-
-// Get default eos
-Eos *Eos::getDefault() { return Eos::DefaultEos; } // end get default
-
-// Get eos by name
-Eos *Eos::get(const std::string &Name ///< [in] Name of eos
-) {
-
-   auto it = AllEos.find(Name);
-
-   if (it != AllEos.end()) {
-      return it->second.get();
-   } else {
-      LOG_ERROR("Eos::get: Attempt to retrieve non-existent Eos:");
-      LOG_ERROR("{} has not been defined or has been removed", Name);
-      return nullptr;
-   }
-
-} // end get eos
 
 } // namespace OMEGA

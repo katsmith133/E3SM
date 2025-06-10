@@ -32,131 +32,113 @@
 
 using namespace OMEGA;
 
+/// Test constants and expected values
 constexpr Geometry Geom      = Geometry::Spherical;
 constexpr int NVertLevels    = 60;
-// Published values (TEOS-10) to test against
-const Real TeosExpValue      = 0.0009732819628; // Expected value for TEOS-10 eos
-const Real LinearExpValue    = 0.0009784735812133072; // Expected value for Linear eos
-double Sa                    = 30.0; // Absolute Salinity in g/kg
-double Ct                    = 10.0; // Conservative Temperature in degC
-double P                     = 1000.0; // Pressure in dbar
-const I4 KDisp               = 1; // Displace parcel to K=1 for TEOS-10 eos
-const Real RTol              = 1e-10; // Relative tolerance for isApprox checks
-// Expected value for Linear eos (and default parameters)
 
-//------------------------------------------------------------------------------
-// The initialization routine for Eos testing. It calls various
-// init routines, including the creation of the default decomposition.
+/// Published values (TEOS-10 and linear) to test against
+const Real TeosExpValue      = 0.0009732819628;       // Expected value for TEOS-10 eos
+const Real LinearExpValue    = 0.0009784735812133072; // Expected value for Linear eos
+
+/// Test input values
+double Sa                    = 30.0;   // Absolute Salinity in g/kg
+double Ct                    = 10.0;   // Conservative Temperature in degC
+double P                     = 1000.0; // Pressure in dbar
+const I4 KDisp               = 1;      // Displace parcel to K=1 for TEOS-10 eos
+const Real RTol              = 1e-10;  // Relative tolerance for isApprox checks
+
+/// The initialization routine for Eos testing. It calls various
+/// init routines, including the creation of the default decomposition.
 I4 initEosTest(const std::string &mesh) {
 
    I4 Err = 0;
 
-   // Initialize the Machine Environment class - this also creates
-   // the default MachEnv. Then retrieve the default environment and
-   // some needed data members.
+   /// Initialize the Machine Environment class - this also creates
+   /// the default MachEnv. Then retrieve the default environment and
+   /// some needed data members.
    MachEnv::init(MPI_COMM_WORLD);
    MachEnv *DefEnv  = MachEnv::getDefault();
    MPI_Comm DefComm = DefEnv->getComm();
 
+   /// Initialize logging
    initLogging(DefEnv);
 
-   // Open config file
+   /// Open and read config file
    Config("Omega");
    Err = Config::readAll("omega.yml");
    if (Err != 0) {
-      LOG_ERROR("Eos: Error reading config file");
+      LOG_ERROR("EosTest: Error reading config file");
       return Err;
    }
 
+   /// Initialize parallel IO
    int IOErr = IO::init(DefComm);
    if (IOErr != 0) {
       Err++;
       LOG_ERROR("EosTest: error initializing parallel IO");
    }
 
+   /// Initialize decomposition
    int DecompErr = Decomp::init(mesh);
    if (DecompErr != 0) {
       Err++;
       LOG_ERROR("EosTest: error initializing default decomposition");
    }
 
+   /// Initialize mesh
    int MeshErr = HorzMesh::init();
    if (MeshErr != 0) {
       Err++;
       LOG_ERROR("EosTest: error initializing default mesh");
    }
 
-   const auto &Mesh = HorzMesh::getDefault();
-   std::shared_ptr<Dimension> VertDim =
-       Dimension::create("NVertLevels", NVertLevels);
-   return Err;
-}
-
-int testEosMapping() {
-   int Err = 0;
-   // test initialization
+   /// Initialize Eos
    int EosErr = Eos::init();
    if (EosErr != 0) {
       Err++;
       LOG_ERROR("EosTest: error initializing default Eos");
    }
 
-   // test retrieval of default
-   Eos *DefEos = Eos::getDefault();
-
+   /// Retrieve Eos
+   Eos *DefEos = Eos::getInstance();
    if (DefEos) {
-      LOG_INFO("EosTest: Default Eos retrieval PASS");
+      LOG_INFO("EosTest: Eos retrieval PASS");
    } else {
       Err++;
-      LOG_INFO("EosTest: Default Eos retrieval FAIL");
+      LOG_INFO("EosTest: Eos retrieval FAIL");
       return -1;
    }
 
-   const auto *Mesh = HorzMesh::getDefault();
-   // test creation of another Eos
-   Eos::create("TestEos", Mesh, NVertLevels);
-
-   if (Eos::get("TestEos")) {
-      LOG_INFO("EosTest: Non-default Eos retrieval PASS");
-   } else {
-      Err++;
-      LOG_INFO("EosTest: Non-default Eos retrieval FAIL");
-   }
-
-   // test erase
-   Eos::erase("TestEos");
-   if (Eos::get("TestEos")) {
-      Err++;
-      LOG_INFO("EosTest: Non-default Eos erase FAIL");
-   } else {
-      LOG_INFO("EosTest: Non-default Eos erase PASS");
-   }
-
+   /// Create vertical dimension for test arrays
+   const auto &Mesh = HorzMesh::getDefault();
+   std::shared_ptr<Dimension> VertDim =
+       Dimension::create("NVertLevels", NVertLevels);
+       
    return Err;
 }
 
+/// Test Linear EOS calculation for all cells/levels
 int testEosLinear() {
    int Err          = 0;
    const auto *Mesh = HorzMesh::getDefault();
-   // create Eos to test
-   Eos::create("LinearEos", Mesh, NVertLevels);
-   Eos *TestEos       = Eos::get("LinearEos");
+   /// Get Eos instance to test
+   Eos *TestEos = Eos::getInstance();
    TestEos->EosChoice = EosType::Linear;
 
-   // create ocean state array
+   /// Create and fill ocean state arrays
    Array2DReal SArray = Array2DReal("SArray", Mesh->NCellsAll, NVertLevels);
    Array2DReal TArray = Array2DReal("TArray", Mesh->NCellsAll, NVertLevels);
    Array2DReal PArray = Array2DReal("PArray", Mesh->NCellsAll, NVertLevels);
-   // Use Kokkos::deep_copy to fill the entire view with the ref value
+   /// Use Kokkos::deep_copy to fill the entire view with the ref value
    deepCopy(SArray, Sa);
    deepCopy(TArray, Ct);
    deepCopy(PArray, P);
    deepCopy(TestEos->SpecVol, 0.0);
 
-   // Key calculation
+   /// Compute specific volume
    TestEos->computeSpecVol(TestEos->SpecVol, TArray, SArray, PArray);
 
-   // check on all array values
+   /// Check all array values against expected value
    int numMismatches = 0;
    Array2DReal SpecVol = TestEos->SpecVol;
    parallelReduce("CheckSpecVolMatrix-linear", {Mesh->NCellsAll, NVertLevels},
@@ -177,32 +159,31 @@ int testEosLinear() {
       LOG_INFO("EosTest SpecVolCalc Linear: PASS");
    }
 
-   Eos::erase("LinearEos");
    return Err;
 }
 
+/// Test TEOS-10 EOS calculation for all cells/levels
 int testEosTeos10() {
    int Err          = 0;
    const auto *Mesh = HorzMesh::getDefault();
-   // create Eos to test
-   Eos::create("TeosEos", Mesh, NVertLevels);
-   Eos *TestEos       = Eos::get("TeosEos");
+   /// Get Eos instance to test
+   Eos *TestEos = Eos::getInstance();
    TestEos->EosChoice = EosType::Teos10Poly75t;
 
-   // create ocean state array
+   /// Create and fill ocean state arrays
    Array2DReal SArray = Array2DReal("SArray", Mesh->NCellsAll, NVertLevels);
    Array2DReal TArray = Array2DReal("TArray", Mesh->NCellsAll, NVertLevels);
    Array2DReal PArray = Array2DReal("PArray", Mesh->NCellsAll, NVertLevels);
-   // Use Kokkos::deep_copy to fill the entire view with the ref value
+   /// Use Kokkos::deep_copy to fill the entire view with the ref value
    deepCopy(SArray, Sa);
    deepCopy(TArray, Ct);
    deepCopy(PArray, P);
    deepCopy(TestEos->SpecVol, 0.0);
 
-   // Key calculation
+   /// Compute specific volume
    TestEos->computeSpecVol(TestEos->SpecVol, TArray, SArray, PArray);
 
-   // check on all array values
+   /// Check all array values against expected value
    int numMismatches = 0;
    Array2DReal SpecVol = TestEos->SpecVol;
    parallelReduce("CheckSpecVolMatrix-Teos", {Mesh->NCellsAll, NVertLevels},
@@ -223,32 +204,31 @@ int testEosTeos10() {
       LOG_INFO("EosTest SpecVolCalc TEOS-10: PASS");
    }
 
-   Eos::erase("TeosEos");
    return Err;
 }
 
+/// Test TEOS-10 EOS calculation with vertical displacement
 int testEosTeos10Displaced() {
    int Err          = 0;
    const auto *Mesh = HorzMesh::getDefault();
-   // create Eos to test
-   Eos::create("TeosDispEos", Mesh, NVertLevels);
-   Eos *TestEos       = Eos::get("TeosDispEos");
+   /// Get Eos instance to test
+   Eos *TestEos = Eos::getInstance();
    TestEos->EosChoice = EosType::Teos10Poly75t;
 
-   // create ocean state array
+   /// Create and fill ocean state arrays
    Array2DReal SArray = Array2DReal("SArray", Mesh->NCellsAll, NVertLevels);
    Array2DReal TArray = Array2DReal("TArray", Mesh->NCellsAll, NVertLevels);
    Array2DReal PArray = Array2DReal("PArray", Mesh->NCellsAll, NVertLevels);
-   // Use Kokkos::deep_copy to fill the entire view with the ref value
+   /// Use Kokkos::deep_copy to fill the entire view with the ref value
    deepCopy(SArray, Sa);
    deepCopy(TArray, Ct);
    deepCopy(PArray, P);
    deepCopy(TestEos->SpecVol, 0.0);
 
-   // Key calculation
+   /// Compute displaced specific volume
    TestEos->computeSpecVolDisp(TestEos->SpecVolDisplaced, TArray, SArray, PArray, KDisp);
 
-   // check on all array values
+   /// Check all array values against expected value
    int numMismatches = 0;
    Array2DReal SpecVolDisplaced = TestEos->SpecVolDisplaced;
    parallelReduce("CheckSpecVolDispMatrix-Teos", {Mesh->NCellsAll, NVertLevels},
@@ -269,12 +249,11 @@ int testEosTeos10Displaced() {
       LOG_INFO("EosTest SpecVolCalcDisp TEOS-10: PASS");
    }
 
-   Eos::erase("TeosDispEos");
    return Err;
 }
 
+/// Finalize and clean up all test infrastructure
 void finalizeEosTest() {
-   Eos::clear();
    HorzMesh::clear();
    Decomp::clear();
    Field::clear();
@@ -282,11 +261,14 @@ void finalizeEosTest() {
    MachEnv::removeAll();
 }
 
+/// Test that the external GSW-C library returns the expected specific volume
 int checkValueGswcSpecVol() {
    int Err         = 0;
    const Real RTol = 1e-10;
 
+   /// Get specific volume from GSW-C library
    double SpecVol = gsw_specvol(Sa, Ct, P);
+   /// Check the value against the expected TEOS-10 value
    bool Check = isApprox(SpecVol, TeosExpValue, RTol);
    if (!Check) {
       Err++;
@@ -300,7 +282,7 @@ int checkValueGswcSpecVol() {
    return Err;
 }
 
-// intermediate test accessing the coefficients
+/// Test that the TEOS-10 coefficient V000 matches the expected value
 int fetchCoeff() {
    int Err       = 0;
    double ExpVal = 0.0010769995862;
@@ -324,8 +306,7 @@ int fetchCoeff() {
 // --> next test call the external GSW-C library
 // and compares the V000 coefficient to the expected value
 // Full array tests:
-// --> one tests the initialization/retrieval of Eos
-// --> next checks the value on a Eos with linear option
+// --> one tests the value on a Eos with linear option
 // --> next checks the value on a Eos with TEOS-10 option
 // --> next checks the value on a Eos with TEOS-10 displaced option
 int eosTest(const std::string &MeshFile = "OmegaMesh.nc") {
@@ -340,7 +321,6 @@ int eosTest(const std::string &MeshFile = "OmegaMesh.nc") {
    Err += fetchCoeff();
 
    LOG_INFO("Full array checks:");
-   Err += testEosMapping();
    Err += testEosLinear();
    Err += testEosTeos10();
    Err += testEosTeos10Displaced();
@@ -353,7 +333,6 @@ int eosTest(const std::string &MeshFile = "OmegaMesh.nc") {
    return Err;
 }
 
-//------------------------------------------------------------------------------
 // The test driver for Eos testing
 int main(int argc, char *argv[]) {
 
@@ -362,6 +341,7 @@ int main(int argc, char *argv[]) {
    MPI_Init(&argc, &argv);
    Kokkos::initialize(argc, argv);
    { RetVal += eosTest(); }
+   Eos::destroyInstance();
    Kokkos::finalize();
    MPI_Finalize();
 

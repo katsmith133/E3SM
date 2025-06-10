@@ -26,71 +26,71 @@ enum class EosType {
    Teos10Poly75t /// Roquet et al. 2015 75 term expansion
 };
 
+/// Class for Equation of State (EOS) calculations
 class Eos {
  public:
-   EosType EosChoice;
-   Array2DReal SpecVol;
-   Array2DReal SpecVolDisplaced;
-   Array2DReal SpecVolPCoeffs; // Only used for TEOS-10
-   mutable bool PCoeffsInit = false; // Only used for TEOS-10
+   /// Get instance of Eos
+   /// \param Name Name for the EOS object (default: "Default")
+   /// \param Mesh Pointer to horizontal mesh (default: nullptr)
+   /// \param NVertLevels Number of vertical levels (default: 0)
+   static Eos* getInstance(const std::string &Name = "Default",
+                           const HorzMesh *Mesh = nullptr,
+                           int NVertLevels = 0);
+
+   /// Destroy instance (frees Kokkos views)
+   static void destroyInstance();
+
+   EosType EosChoice;                ///< Current EOS type in use
+   Array2DReal SpecVol;              ///< Specific volume field
+   Array2DReal SpecVolDisplaced;     ///< Displaced specific volume field
+   Array2DReal SpecVolPCoeffs;       ///< Pressure coefficients for TEOS-10
+   mutable bool PCoeffsInit = false; ///< True if pressure coefficients are initialized (for TEOS-10)
 
    // Linear EOS parameters
-   Real DRhodT  = {-0.2};   // alpha in kg.m-3 degC-1
-   Real DRhodS  = {0.8};    // beta in kg m-3
-   Real RhoT0S0 = {1000.0}; // density at (T,S)=(0,0) in kg.m-3
+   Real DRhodT  = {-0.2};   ///< Thermal expansion coefficient (kg m^-3 degC^-1)
+   Real DRhodS  = {0.8};    ///< Haline contraction coefficient (kg m^-3)
+   Real RhoT0S0 = {1000.0}; ///< Reference density (kg m^-3) at (T,S)=(0,0)
 
-   std::string SpecVolFldName;
-   std::string SpecVolDisplacedFldName;
-   std::string EosGroupName;
-   std::string Name;
+   std::string SpecVolFldName;           ///< Field name for specific volume
+   std::string SpecVolDisplacedFldName;  ///< Field name for displaced specific volume
+   std::string EosGroupName;             ///< EOS group name (for config)
+   std::string Name;                     ///< Name of this EOS instance
 
+   /// Compute specific volume for all cells/levels
    void computeSpecVol(const Array2DReal &SpecVol,
                        const Array2DReal &ConservTemp,
                        const Array2DReal &AbsSalinity,
                        const Array2DReal &Pressure) const;
 
+   /// Compute displaced specific volume (for vertical displacement)
    void computeSpecVolDisp(const Array2DReal &SpecVol,
                        const Array2DReal &ConservTemp,
                        const Array2DReal &AbsSalinity,
                        const Array2DReal &Pressure,
                        I4 KDisp) const;
 
-   // Static management functions
+   /// Initialize EOS from config and mesh
    static I4 init();
-   static Eos *create(const std::string &Name, const HorzMesh *Mesh,
-                      int NVertLevels) {
-      // Check to see if eos of the same name already exist and
-      // if so, exit with an error
-      if (AllEos.find(Name) != AllEos.end()) {
-         LOG_ERROR("Attempted to create Eos with name {} but Eos of "
-                   "that name already exists",
-                   Name);
-         return nullptr;
-      }
-
-      // Create new eos on the heap and put it in a map of
-      // unique_ptrs, which will manage its lifetime
-      auto *NewEos = new Eos(Name, Mesh, NVertLevels);
-      AllEos.emplace(Name, NewEos);
-
-      return NewEos; // get(Name);
-   }
-   ~Eos();
-   // Deallocates arrays
-   static void clear();
-   // Remove Eos object by name
-   static void erase(const std::string &Name); ///< [in]
-   // Get default eos object
-   static Eos *getDefault();
-   // Get eos object by name
-   static Eos *get(const std::string &Name); ///< [in]
 
  private:
-   I4 NCellsAll;
-   I4 NChunks;
-   const int NVertLevels;
+   /// Private constructor
+    Eos(const std::string &Name, const HorzMesh *Mesh, int NVertLevels);
+   /// Private destructor
+    ~Eos();
 
-   // Linear EOS calculation
+    static Eos* instance_; ///< Instance pointer
+
+    // Delete copy and move constructors and assignment operators
+    Eos(const Eos&) = delete;
+    Eos& operator=(const Eos&) = delete;
+    Eos(Eos&&) = delete;
+    Eos& operator=(Eos&&) = delete;
+
+   I4 NCellsAll;         ///< Number of horizontal cells
+   I4 NChunks;           ///< Number of vertical chunks (for vectorization)
+   const int NVertLevels;///< Number of vertical levels
+
+   /// Compute linear EOS specific volume for a chunk
    KOKKOS_FUNCTION void computeSpecVolLinear(const Array2DReal &SpecVol,
                                              I4 ICell, I4 KChunk,
                                              const Array2DReal &ConservTemp,
@@ -104,7 +104,7 @@ class Eos {
       }
    }
 
-   // TEOS-10 calculation
+   /// Compute TEOS-10 specific volume for a chunk
    KOKKOS_FUNCTION void computeSpecVolTeos10(const Array2DReal &SpecVol,
                                              I4 ICell, I4 KChunk,
                                              const Array2DReal &ConservTemp,
@@ -114,30 +114,33 @@ class Eos {
       const I4 KStart = KChunk * VecLength;
       for (int KVec = 0; KVec < VecLength; ++KVec) {
          const I4 K = KStart + KVec;
-         calcPCoeffs(SpecVolPCoeffs, KVec, ConservTemp(ICell, K), AbsSalinity(ICell, K));
-         PCoeffsInit = true;
+         if (!PCoeffsInit) {
+            calcPCoeffs(SpecVolPCoeffs, KVec, ConservTemp(ICell, K), AbsSalinity(ICell, K));
+            PCoeffsInit = true;
+         }
          if (KDisp == 0) {
             // No displacement
             SpecVol(ICell, K) = calcRefProfile(Pressure(ICell, K)) +
                                 calcDelta(SpecVolPCoeffs, KVec, Pressure(ICell, K));
-         } else
+         } else {
             // Displacement, use the displaced pressure
             // Check to make sure KDisp is within bounds 
             // (change bounds to minLevelCell and 
             // maxLevelCell when the become available?)
             if (KDisp >= NVertLevels || KDisp < 0) {
-               LOG_ERROR("Eos: KDisp {} is either < 0 or out of bounds"
-                         "for NVertLevels {}", KDisp, NVertLevels);
+               LOG_ERROR("Eos::computeSpecVolTeos10: KDisp {} is"
+                         "either < 0 or out of bounds for NVertLevels {}", 
+                         KDisp, NVertLevels);
             }
             SpecVol(ICell, K) =
                 calcRefProfile(Pressure(ICell, KDisp)) +
                 calcDelta(SpecVolPCoeffs, KVec, Pressure(ICell, KDisp));
          }
       }
+   }
    
-
-   // TEOS-10 helpers
-   // Calculate pressure coefficients
+   /// TEOS-10 helpers
+   /// Calculate pressure polynomial coefficients for TEOS-10
    KOKKOS_FUNCTION void calcPCoeffs(const Array2DReal &SpecVolPCoeffs, 
                                     const I4 K, const Real Ct, 
                                     const Real Sa) const {
@@ -174,12 +177,12 @@ class Eos {
       // could insert a check here (abs(value)> 0 value or <e+33)
    }
 
-   // Calculate delta
+   /// Evaluate pressure polynomial delta for TEOS-10
    KOKKOS_FUNCTION Real calcDelta(const Array2DReal &SpecVolPCoeffs, 
                                   const I4 K, const Real P) const {
       // Check if the coefficients have been initialized
       if (!PCoeffsInit) {
-         LOG_ERROR("Eos: calcPCoeffs must be called before calcDelta");
+         LOG_ERROR("Eos::calcDelta: calcPCoeffs must be called before calcDelta");
          return;
       }
       const Real Pu = 1e4;
@@ -191,7 +194,7 @@ class Eos {
       return Delta;
    }
 
-   // Calculate reference profile
+   /// Calculate reference profile for TEOS-10
    KOKKOS_FUNCTION Real calcRefProfile(Real P) const {
       const Real Pu  = 1e4;
       const Real V00 = -4.4015007269e-05;
@@ -207,16 +210,9 @@ class Eos {
       return V0;
    }
 
-   // Constructor declaration
-   Eos(const std::string &Name, ///< [in] Name for eos object
-       const HorzMesh *Mesh,    ///< [in] Horizontal mesh
-       int NVertLevels          ///< [in] Number of vertical levels
-   );
-   // Pointer to default eos
-   static Eos *DefaultEos;
-   // Map with all eos objects
-   static std::map<std::string, std::unique_ptr<Eos>> AllEos;
+   // Define fields and metadata
    void defineFields();
+
 }; // End class Eos
 
 } // namespace OMEGA
