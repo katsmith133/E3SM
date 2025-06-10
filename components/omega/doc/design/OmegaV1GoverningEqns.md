@@ -234,8 +234,47 @@ $$
 $$ (hydrostatic)
 
 
+## 4. Favre Averaging
 
-## 4. Layered Equations
+The most common approach to determine the structure of the small scale stresses in ocean modeling is through Reynolds' averaging.  In this approach, a generic field $\phi$ is broken into a mean and deviatoric component, i.e.
+
+$$
+\phi = \overline{\phi} + \phi^\prime
+$$
+
+When deriving the Reynolds' averaged equations, averages of terms with a single prime are discarded by construction.  This is an attractive approach for Boussinesq ocean models since the density is assumed constant in all equations.  When the ocean model is non Boussinesq, this leads to difficulties.  For example, consider the first term in equation []{#h-momentum}, if a Reynolds' decomposition and averaging is performed, 
+
+$$
+\frac{d}{dt} \int_{A} \int_{z^{\text{bot}}}^{z^{\text{top}}} \rho \,  {\bf u}  \, dz \, dA = \frac{d}{dt} \int_{A} \int_{z^{\text{bot}}}^{z^{\text{top}}} (\overline{\rho {\bf u}} +  \,  \overline{\rho^\prime {\bf u}^\prime})  \, dz \, dA 
+$$
+
+In this equation, the products of prime and average drop out by construction.  The $\overline{\rho^\prime {\mathbf u}^\prime}$ term is an unnecessary complication and difficult to parameterize.  To circumvent this complication, Omega will adopt Favre averaging [Pope 2000](https://elmoukrie.com/wp-content/uploads/2022/04/pope-s.b.-turbulent-flows-cambridge-university-press-2000.pdf), which for the generic variable $\phi$ is 
+
+$$
+\phi = \hat{\phi} + \phi^"
+$$
+
+Where $\hat{\phi} \equiv \frac{\overline{\rho \phi}}{\overline{rho}}$, and the double prime indicates deviations from this density weighted mean.  In the definition, the overbar is an averaging operator with identical properties to a Reynolds' average.  Using this relation, we can relate Reynolds' average to Favre average by considering a the average of $\rho \phi$.  The standard Reynolds' approach gives
+
+$$
+\overline{\rho \phi} = \overline{\rho}\overline{\phi} + \overline{\rho^\prime \phi^\prime}
+$$
+
+Isolating $\overline{\phi}$, 
+
+$$
+\overline{\phi} = \frac{\overline{\rho \phi}}{\overline{\rho}} + \frac{\overline{\rho^\prime \phi^\prime}}{\overline{\rho}}
+$$
+
+The first term on the right side of the equation is the definition of a Favre average, which yields
+
+$$
+\overline{\phi} = \hat{\phi} + \frac{\overline{\rho^\prime \phi^\prime}}{\overline{\rho}}
+$$
+
+Throughout much of the ocean, we expect the second term to be $O(10^{-3})$ but could be large in highly turbulent regions.  With the adoption, all Omega variables will be interpreted as Favre averaged, but these variables will be very similar tothe traditional Reynolds' average for most flows.
+
+## 5. Layered Equations
 
 ### Pseudo-Height
 
@@ -333,19 +372,29 @@ $$ (h-phi)
 
 ### Layered Tracer & Mass 
 
-Dividing the tracer equation [](#vh-tracer) for layer $k$ by the normalization constant $\rho_0$, and substituting [](#def-pseudo-velocity) and [](#h-phi), we have
+Dividing the tracer equation [](#vh-tracer) for layer $k$ by the normalization constant $\rho_0$, and substituting [](#def-pseudo-velocity), we have
 
 $$
-\frac{d}{dt} \int_{A} {\tilde h}_k {\overline \varphi}^{\tilde{z}}_k  \, dA
+\frac{d}{dt} \int_{A} \int_{z^{\text{bot}}}^{z^{\text{top}}} \rho \, \varphi \, dz \, dA
 +
-   \int_{\partial A}\left({\tilde h}_k \overline{\varphi {\bf u}}^{\tilde{z}}_k  \right) \cdot {\bf n} \, dl
+   \int_{\partial A}\left( \int_{z^{\text{bot}}}^{z^{\text{top}}}\rho\, \varphi \, {\bf u} \, dz \right) \cdot {\bf n} \, dl
  + \int_{A}\left[ \varphi \left({\tilde w} - {\tilde w}_r \right) \right]_{{\tilde z}={\tilde z}_k^{\text{top}}} \, dA
  - \int_{A}\left[ \varphi \left({\tilde w} - {\tilde w}_r \right) \right]_{{\tilde z}={\tilde z}_{k+1}^{\text{bot}}} \, dA
 = 0
 $$ (Aintegral-tracer)
 
-where we converted to pseudo-height for the last two terms using [](#formula-pseudo-height).
-Taking the limit as $A \rightarrow 0$ and using Gauss's theorem for the horizontal advection,
+where we converted to pseudo-height for the last two terms using [](#formula-pseudo-height) as the derivation is equally valid for a full field variable $\varphi$ or Reynolds' or Favre Averaged field ($\hat{\varphi}$). We next perform a Favre decomposition, noting that from the definition of a Favre average that $\overline{\rho \varphi} = \overline{\rho}\hat{\varphi}$
+
+$$
+\frac{1}{\rho} \frac{d}{dt} \int_{A} \int_{z^{\text{bot}}}^{z^{\text{top}}} \overline{\rho} \, \hat{\varphi} \, dz \, dA
++
+   \frac{1}{\rho} \int_{\partial A}\left( \int_{z^{\text{bot}}}^{z^{\text{top}}} \overline{\rho}\, (\hat{\varphi}\hat{\bf u} + \overline{\varphi^{\prime \prime} {\bf u}^{\prime \prime}}) \, dz \right) \cdot {\bf n} \, dl
+ + \int_{A}\left[ \hat{\varphi} \hat{\tilde w}_{tr} + \overline{\varphi^{\prime \prime} {\tilde w}_{tr}^{\prime \prime}} \right]_{{\tilde z}={\tilde z}_k^{\text{top}}} \, dA
+ - \int_{A}\left[ \hat{\varphi} \hat{\tilde w}_{tr} + \overline{\varphi^{\prime \prime} {\tilde w}_{tr}^{\prime \prime}} \right]_{{\tilde z}={\tilde z}_{k+1}^{\text{bot}}} \, dA
+= 0
+$$ (Aintegral-tracer2)
+
+Applying [](#formula-pseudo-height) to the first two terms and taking the limit as $A \rightarrow 0$ and using Gauss's theorem for the horizontal advection,
 
 $$
 \frac{d{\tilde h}_k {\overline \varphi}^{\tilde{z}}_k  }{dt} 
@@ -353,7 +402,7 @@ $$
    \nabla \cdot \left({\tilde h}_k \overline{\varphi {\bf u}}^{\tilde{z}}_k  \right) 
  + \left[ \varphi {\tilde w}_{tr} \right]_{{\tilde z}={\tilde z}_k^{\text{top}}} 
  - \left[ \varphi {\tilde w}_{tr} \right]_{{\tilde z}={\tilde z}_{k+1}^{\text{bot}}}
-= 0.
+= -\left(\nabla \cdot \left({\tilde h}_k \overline{\varphi {\bf u}}^{\tilde{z}}_k  \right) + \left[\overline{\varphi^{\prime \prime} {\tilde w}_{tr}^{\prime \prime}}\right]_{{\tilde z}={\tilde z}_k^{\text{top}}} - \left[\overline{\varphi^{\prime \prime} {\tilde w}_{tr}^{\prime \prime}} \right]_{{\tilde z}={\tilde z}_{k+1}^{\text{bot}}}\right).
 $$ (layer-tracer-pre)
 
 Here ${\tilde w}_{tr}={\tilde w} - {\tilde w}_r$ is the normalized vertical mass transport through the layer interface. 
