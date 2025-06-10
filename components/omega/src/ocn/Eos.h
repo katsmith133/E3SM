@@ -56,17 +56,17 @@ class Eos {
    std::string Name;                     ///< Name of this EOS instance
 
    /// Compute specific volume for all cells/levels
-   void computeSpecVol(const Array2DReal &SpecVol,
+   void computeSpecVol(Array2DReal SpecVol,
                        const Array2DReal &ConservTemp,
                        const Array2DReal &AbsSalinity,
-                       const Array2DReal &Pressure) const;
+                       const Array2DReal &Pressure);
 
    /// Compute displaced specific volume (for vertical displacement)
-   void computeSpecVolDisp(const Array2DReal &SpecVol,
+   void computeSpecVolDisp(Array2DReal SpecVol,
                        const Array2DReal &ConservTemp,
                        const Array2DReal &AbsSalinity,
                        const Array2DReal &Pressure,
-                       I4 KDisp) const;
+                       I4 KDisp);
 
    /// Initialize EOS from config and mesh
    static I4 init();
@@ -90,10 +90,10 @@ class Eos {
    const int NVertLevels;///< Number of vertical levels
 
    /// Compute linear EOS specific volume for a chunk
-   KOKKOS_FUNCTION void computeSpecVolLinear(const Array2DReal &SpecVol,
+   KOKKOS_FUNCTION void computeSpecVolLinear(Array2DReal SpecVol,
                                              I4 ICell, I4 KChunk,
                                              const Array2DReal &ConservTemp,
-                                             const Array2DReal &AbsSalinity) const {
+                                             const Array2DReal &AbsSalinity) {
       const I4 KStart = KChunk * VecLength;
       for (int KVec = 0; KVec < VecLength; ++KVec) {
          const I4 K = KStart + KVec;
@@ -104,12 +104,12 @@ class Eos {
    }
 
    /// Compute TEOS-10 specific volume for a chunk
-   KOKKOS_FUNCTION void computeSpecVolTeos10(const Array2DReal &SpecVol,
+   KOKKOS_FUNCTION void computeSpecVolTeos10(Array2DReal SpecVol,
                                              I4 ICell, I4 KChunk,
                                              const Array2DReal &ConservTemp,
                                              const Array2DReal &AbsSalinity,
                                              const Array2DReal &Pressure,
-                                             I4 KDisp) const {
+                                             I4 KDisp) {
       const I4 KStart = KChunk * VecLength;
       for (int KVec = 0; KVec < VecLength; ++KVec) {
          const I4 K = KStart + KVec;
@@ -140,9 +140,9 @@ class Eos {
    
    /// TEOS-10 helpers
    /// Calculate pressure polynomial coefficients for TEOS-10
-   KOKKOS_FUNCTION void calcPCoeffs(const Array2DReal &SpecVolPCoeffs, 
+   KOKKOS_FUNCTION void calcPCoeffs(Array2DReal SpecVolPCoeffs, 
                                     const I4 K, const Real Ct, 
-                                    const Real Sa) const {
+                                    const Real Sa) {
       const Real SAu    = 40.0 * 35.16504 / 35.0;
       const Real CTu    = 40.0;
       const Real DeltaS = 24.0;

@@ -161,6 +161,51 @@ int testEosLinear() {
    return Err;
 }
 
+/// Test Linear EOS calculation with vertical displacement
+int testEosLinearDisplaced() {
+   int Err          = 0;
+   const auto *Mesh = HorzMesh::getDefault();
+   /// Get Eos instance to test
+   Eos *TestEos = Eos::getInstance();
+   TestEos->EosChoice = EosType::Linear;
+
+   /// Create and fill ocean state arrays
+   Array2DReal SArray = Array2DReal("SArray", Mesh->NCellsAll, NVertLevels);
+   Array2DReal TArray = Array2DReal("TArray", Mesh->NCellsAll, NVertLevels);
+   Array2DReal PArray = Array2DReal("PArray", Mesh->NCellsAll, NVertLevels);
+   /// Use Kokkos::deep_copy to fill the entire view with the ref value
+   deepCopy(SArray, Sa);
+   deepCopy(TArray, Ct);
+   deepCopy(PArray, P);
+   deepCopy(TestEos->SpecVol, 0.0);
+
+   /// Compute displaced specific volume
+   TestEos->computeSpecVolDisp(TestEos->SpecVolDisplaced, TArray, SArray, PArray, KDisp);
+
+   /// Check all array values against expected value
+   int numMismatches = 0;
+   Array2DReal SpecVolDisplaced = TestEos->SpecVolDisplaced;
+   parallelReduce("CheckSpecVolDispMatrix-Teos", {Mesh->NCellsAll, NVertLevels},
+                  KOKKOS_LAMBDA(int i, int j, int &localCount) {
+                     if (!isApprox(SpecVolDisplaced(i, j), LinearExpValue, RTol)) {
+                        localCount++;
+                     }
+                  },
+                  numMismatches);
+
+   if (numMismatches != 0) {
+      Err++;
+      LOG_ERROR("EosTest: Linear SpecVolDisp isApprox FAIL, "
+                "expected {}, got {} with {} mismatches",
+                LinearExpValue, SpecVolDisplaced(1,1), numMismatches);
+   }
+   if (Err == 0) {
+      LOG_INFO("EosTest SpecVolCalcDisp Linear: PASS");
+   }
+
+   return Err;
+}
+
 /// Test TEOS-10 EOS calculation for all cells/levels
 int testEosTeos10() {
    int Err          = 0;
@@ -287,6 +332,7 @@ int checkValueGswcSpecVol() {
 // and compares the specific volume to the published value
 // Full array tests:
 // --> one tests the value on a Eos with linear option
+// --> next checks the value on a Eos with linear displaced option
 // --> next checks the value on a Eos with TEOS-10 option
 // --> next checks the value on a Eos with TEOS-10 displaced option
 int eosTest(const std::string &MeshFile = "OmegaMesh.nc") {
@@ -301,6 +347,7 @@ int eosTest(const std::string &MeshFile = "OmegaMesh.nc") {
 
    LOG_INFO("Full array checks:");
    Err += testEosLinear();
+   Err += testEosLinearDisplaced();
    Err += testEosTeos10();
    Err += testEosTeos10Displaced();
 

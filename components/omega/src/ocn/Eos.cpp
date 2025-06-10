@@ -1,3 +1,12 @@
+//===-- ocn/Eos.cpp - Equation of State ------------------*- C++ -*-===//
+//
+// The Eos class is responsible for managing the equation of state. It 
+// has a linear EOS and TEOS-10 EOS option, which is determined at 
+// initialization. It contains arrays that store the specific volume and 
+// displaced specific volume data.
+//
+//===----------------------------------------------------------------------===//
+
 #include "Eos.h"
 #include "DataTypes.h"
 #include "HorzMesh.h"
@@ -5,7 +14,7 @@
 namespace OMEGA {
 
 /// Constructor for Eos
-Eos::Eos(const std::string &Name, ///< [in] Name for eos object
+Eos::Eos(const std::string &Name,  ///< [in] Name for eos object
          const HorzMesh *Mesh,     ///< [in] Horizontal mesh
          int NVertLevels           ///< [in] Number of vertical levels
          )
@@ -18,7 +27,6 @@ Eos::Eos(const std::string &Name, ///< [in] Name for eos object
       NChunks(NVertLevels / VecLength),
       NVertLevels(NVertLevels)
 {
-    // Optionally set EosChoice from config or arguments
     defineFields();
 }
 
@@ -75,7 +83,7 @@ int Eos::init() {
       return Err;
    }
 
-   /// Set EosChoice based on EosTypeStr
+   /// Set EosChoice based on EosTypeStr and get parameters
    if (EosTypeStr == "Linear" or EosTypeStr == "linear") {
       Config EosLinConfig("Linear");
       Err = EosConfig.get(EosLinConfig);
@@ -111,10 +119,10 @@ int Eos::init() {
 } // end init
 
 /// Compute specific volume for all cells/levels (no displacement)
-void Eos::computeSpecVol(const Array2DReal &SpecVol,
+void Eos::computeSpecVol(Array2DReal SpecVol,
                          const Array2DReal &ConservTemp,
                          const Array2DReal &AbsSalinity,
-                         const Array2DReal &Pressure) const {
+                         const Array2DReal &Pressure) {
    OMEGA_SCOPE(LocSpecVol, SpecVol); /// Create a local view for computation
    deepCopy(LocSpecVol, 0.0);
    I4 KDisp = 0; /// No displacement in this case
@@ -139,18 +147,24 @@ void Eos::computeSpecVol(const Array2DReal &SpecVol,
 }
 
 /// Compute displaced specific volume (for vertical displacement)
-void Eos::computeSpecVolDisp(const Array2DReal &SpecVolDisplaced,
+void Eos::computeSpecVolDisp(Array2DReal SpecVolDisplaced,
                          const Array2DReal &ConservTemp,
                          const Array2DReal &AbsSalinity,
                          const Array2DReal &Pressure,
-                         I4 KDisp) const {
+                         I4 KDisp) {
    OMEGA_SCOPE(LocSpecVolDisplaced, SpecVolDisplaced); /// Local view for computation
    deepCopy(LocSpecVolDisplaced, 0.0);
-   /// Only TEOS-10 supports displaced calculation
    if (EosChoice == EosType::Linear) {
-      LOG_ERROR(
-          "Eos::computeSpecVolDisp called with Linear EOS."
-          "This is not supported, use Teos10Poly75t instead.");
+      LOG_INFO(
+          "Eos::computeSpecVolDisp called with Linear EOS. "
+          "SpecVol is independent of pressure/depth, so the "
+          "displaced value will be the same as SpecVol.");
+      parallelFor(
+          "eos-linear", {NCellsAll, NChunks},
+          KOKKOS_LAMBDA(I4 ICell, I4 KChunk) {
+             computeSpecVolLinear(LocSpecVolDisplaced, ICell, KChunk,
+                                     ConservTemp, AbsSalinity);
+          });
    } else if (EosChoice == EosType::Teos10Poly75t) {
       parallelFor(
           "eos-teos10", {NCellsAll, NChunks},
