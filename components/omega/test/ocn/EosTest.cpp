@@ -14,7 +14,6 @@
 #include "DataTypes.h"
 #include "Decomp.h"
 #include "Dimension.h"
-#include "EosConstants.h"
 #include "IO.h"
 #include "Logging.h"
 #include "MachEnv.h"
@@ -282,29 +281,10 @@ int checkValueGswcSpecVol() {
    return Err;
 }
 
-/// Test that the TEOS-10 coefficient V000 matches the expected value
-int fetchCoeff() {
-   int Err       = 0;
-   double ExpVal = 0.0010769995862;
-   GSW_SPECVOL_COEFFICIENTS;
-
-   if (!isApprox(V000, ExpVal, RTol)) {
-      Err++;
-      LOG_ERROR("EosTest: Coeff V000 isApprox FAIL, expected {}, got {}",
-                ExpVal, V000);
-   }
-   if (Err == 0) {
-      LOG_INFO("GswcTeosTest: check PASS");
-   }
-   return Err;
-}
-
 // the main test (all in one to have the same log)
-// Single value tests:
-// --> one test calls the external GSW-C library
+// Single value test:
+// --> test calls the external GSW-C library
 // and compares the specific volume to the published value
-// --> next test call the external GSW-C library
-// and compares the V000 coefficient to the expected value
 // Full array tests:
 // --> one tests the value on a Eos with linear option
 // --> next checks the value on a Eos with TEOS-10 option
@@ -318,7 +298,6 @@ int eosTest(const std::string &MeshFile = "OmegaMesh.nc") {
    
    LOG_INFO("Single value checks:");
    Err += checkValueGswcSpecVol();
-   Err += fetchCoeff();
 
    LOG_INFO("Full array checks:");
    Err += testEosLinear();

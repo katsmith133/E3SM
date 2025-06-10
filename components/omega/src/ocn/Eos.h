@@ -12,7 +12,6 @@
 
 #include "AuxiliaryState.h"
 #include "Config.h"
-#include "EosConstants.h"
 #include "HorzMesh.h"
 #include "MachEnv.h"
 #include "OmegaKokkos.h"
@@ -147,9 +146,85 @@ class Eos {
       const Real SAu    = 40.0 * 35.16504 / 35.0;
       const Real CTu    = 40.0;
       const Real DeltaS = 24.0;
-      GSW_SPECVOL_COEFFICIENTS;
       const Real Ss     = Kokkos::sqrt((Sa + DeltaS) / SAu);
       Real Tt           = Ct / CTu;
+
+      /// Coefficients for the polynomial expansion
+      const Real V000 = 1.0769995862e-03;
+      const Real V100 = -3.1038981976e-04;
+      const Real V200 = 6.6928067038e-04;
+      const Real V300 = -8.5047933937e-04;
+      const Real V400 = 5.8086069943e-04;
+      const Real V500 = -2.1092370507e-04;
+      const Real V600 = 3.1932457305e-05;
+      const Real V010 = -1.5649734675e-05;
+      const Real V110 = 3.5009599764e-05;
+      const Real V210 = -4.3592678561e-05;
+      const Real V310 = 3.4532461828e-05;
+      const Real V410 = -1.1959409788e-05;
+      const Real V510 = 1.3864594581e-06;
+      const Real V020 = 2.7762106484e-05;
+      const Real V120 = -3.7435842344e-05;
+      const Real V220 = 3.5907822760e-05;
+      const Real V320 = -1.8698584187e-05;
+      const Real V420 = 3.8595339244e-06;
+      const Real V030 = -1.6521159259e-05;
+      const Real V130 = 2.4141479483e-05;
+      const Real V230 = -1.4353633048e-05;
+      const Real V330 = 2.2863324556e-06;
+      const Real V040 = 6.9111322702e-06;
+      const Real V140 = -8.7595873154e-06;
+      const Real V240 = 4.3703680598e-06;
+      const Real V050 = -8.0539615540e-07;
+      const Real V150 = -3.3052758900e-07;
+      const Real V060 = 2.0543094268e-07;
+      const Real V001 = -1.6784136540e-05;
+      const Real V101 = 2.4262468747e-05;
+      const Real V201 = -3.4792460974e-05;
+      const Real V301 = 3.7470777305e-05;
+      const Real V401 = -1.7322218612e-05;
+      const Real V501 = 3.0927427253e-06;
+      const Real V011 = 1.8505765429e-05;
+      const Real V111 = -9.5677088156e-06;
+      const Real V211 = 1.1100834765e-05;
+      const Real V311 = -9.8447117844e-06;
+      const Real V411 = 2.5909225260e-06;
+      const Real V021 = -1.1716606853e-05;
+      const Real V121 = -2.3678308361e-07;
+      const Real V221 = 2.9283346295e-06;
+      const Real V321 = -4.8826139200e-07;
+      const Real V031 = 7.9279656173e-06;
+      const Real V131 = -3.4558773655e-06;
+      const Real V231 = 3.1655306078e-07;
+      const Real V041 = -3.4102187482e-06;
+      const Real V141 = 1.2956717783e-06;
+      const Real V051 = 5.0736766814e-07;
+      const Real V002 = 3.0623833435e-06;
+      const Real V102 = -5.8484432984e-07;
+      const Real V202 = -4.8122251597e-06;
+      const Real V302 = 4.9263106998e-06;
+      const Real V402 = -1.7811974727e-06;
+      const Real V012 = -1.1736386731e-06;
+      const Real V112 = -5.5699154557e-06;
+      const Real V212 = 5.4620748834e-06;
+      const Real V312 = -1.3544185627e-06;
+      const Real V022 = 2.1305028740e-06;
+      const Real V122 = 3.9137387080e-07;
+      const Real V222 = -6.5731104067e-07;
+      const Real V032 = -4.6132540037e-07;
+      const Real V132 = 7.7618888092e-09;
+      const Real V042 = -6.3352916514e-08;
+      const Real V003 = -3.8088938393e-07;
+      const Real V103 = 3.6310188515e-07;
+      const Real V203 = 1.6746303780e-08;
+      const Real V013 = -3.6527006553e-07;
+      const Real V113 = -2.7295696237e-07;
+      const Real V023 = 2.8695905159e-07;
+      const Real V004 = 8.8302421514e-08;
+      const Real V104 = -1.1147125423e-07;
+      const Real V014 = 3.1454099902e-07;
+      const Real V005 = 4.2369007180e-09;
+
       SpecVolPCoeffs(5, K) = V005;
       SpecVolPCoeffs(4, K) = V014 * Tt + V104 * Ss + V004;
       SpecVolPCoeffs(3, K) = 
@@ -180,11 +255,13 @@ class Eos {
    /// Evaluate pressure polynomial delta for TEOS-10
    KOKKOS_FUNCTION Real calcDelta(const Array2DReal &SpecVolPCoeffs, 
                                   const I4 K, const Real P) const {
-      // Check if the coefficients have been initialized
+   
+      // Check if the pressure coefficients have been initialized
       if (!PCoeffsInit) {
          LOG_ERROR("Eos::calcDelta: calcPCoeffs must be called before calcDelta");
          return;
       }
+
       const Real Pu = 1e4;
       Real Pp       = P / Pu;
 
