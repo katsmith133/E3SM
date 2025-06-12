@@ -66,7 +66,7 @@ class Eos {
                        const Array2DReal &ConservTemp,
                        const Array2DReal &AbsSalinity,
                        const Array2DReal &Pressure,
-                       I4 KDisp);
+                       I4 KDisp, const std::string &DispType);
 
    /// Initialize EOS from config and mesh
    static I4 init();
@@ -109,7 +109,7 @@ class Eos {
                                              const Array2DReal &ConservTemp,
                                              const Array2DReal &AbsSalinity,
                                              const Array2DReal &Pressure,
-                                             I4 KDisp) {
+                                             I4 KDisp, const std::string &DispType) {
       const I4 KStart = KChunk * VecLength;
       for (int KVec = 0; KVec < VecLength; ++KVec) {
          const I4 K = KStart + KVec;
@@ -123,9 +123,19 @@ class Eos {
                               calcDelta(SpecVolPCoeffs, KVec, Pressure(ICell, K));
          } else {
             // Displacement, use the displaced pressure
-            SpecVol(ICell, K) =
-               calcRefProfile(Pressure(ICell, KDisp)) +
-               calcDelta(SpecVolPCoeffs, KVec, Pressure(ICell, KDisp));
+            if (DispType == "absolute") {
+               I4 KTmp = Kokkos::min(KDisp, NVertLevels-1);
+               KTmp    = Kokkos::max(0, KTmp);
+               SpecVol(ICell, K) =
+                  calcRefProfile(Pressure(ICell, KTmp)) +
+                  calcDelta(SpecVolPCoeffs, KVec, Pressure(ICell, KTmp));
+            } else if (DispType == "relative") {
+               I4 KTmp = Kokkos::min(K + KDisp, NVertLevels-1);
+               KTmp    = Kokkos::max(0, KTmp);
+               SpecVol(ICell, K) =
+                  calcRefProfile(Pressure(ICell, KTmp)) +
+                  calcDelta(SpecVolPCoeffs, KVec, Pressure(ICell, KTmp));
+            }
          }
       }
    }

@@ -125,7 +125,10 @@ void Eos::computeSpecVol(Array2DReal SpecVol,
                          const Array2DReal &Pressure) {
    OMEGA_SCOPE(LocSpecVol, SpecVol); /// Create a local view for computation
    deepCopy(LocSpecVol, 0.0);
-   I4 KDisp = 0; /// No displacement in this case
+
+   I4 KDisp = 0;                  /// No displacement in this case
+   std::string DispType = "none"; /// No displacement type for this case
+
    /// Dispatch to the correct EOS calculation
    if (EosChoice == EosType::Linear) {
       parallelFor(
@@ -140,7 +143,7 @@ void Eos::computeSpecVol(Array2DReal SpecVol,
           KOKKOS_LAMBDA(I4 ICell, I4 KChunk) {
              computeSpecVolTeos10(LocSpecVol, ICell, KChunk,
                                             ConservTemp, AbsSalinity, 
-                                            Pressure, KDisp);
+                                            Pressure, KDisp, DispType);
           });
    }
    deepCopy(SpecVol, LocSpecVol); /// Copy result back to output view
@@ -151,7 +154,7 @@ void Eos::computeSpecVolDisp(Array2DReal SpecVolDisplaced,
                          const Array2DReal &ConservTemp,
                          const Array2DReal &AbsSalinity,
                          const Array2DReal &Pressure,
-                         I4 KDisp) {
+                         I4 KDisp, const std::string &DispType) {
    OMEGA_SCOPE(LocSpecVolDisplaced, SpecVolDisplaced); /// Local view for computation
    deepCopy(LocSpecVolDisplaced, 0.0);
    /// Check to make sure KDisp is within bounds 
@@ -161,6 +164,20 @@ void Eos::computeSpecVolDisp(Array2DReal SpecVolDisplaced,
       LOG_ERROR("Eos::computeSpecVolDisp: KDisp {} is"
                "either < 0 or out of bounds for NVertLevels {}", 
                KDisp, NVertLevels);
+   }
+   /// Check displacement type
+   if (DispType == "absolute") {
+      LOG_INFO("Eos::computeSpecVolDisp called with TEOS-10 EOS and "
+               "absolute displacement. Displacement will be applied "
+               "to the specified layer.");
+   } else if (DispType == "relative") {
+      LOG_INFO("Eos::computeSpecVolDisp called with TEOS-10 EOS and "
+               "relative displacement. Displacement will be applied "
+               "relative to the current layer.");
+   } else {
+      LOG_ERROR("Eos::computeSpecVolDisp: Unknown displacement type '{}'. "
+               "Valid types are 'absolute' or 'relative'.", DispType);
+      return;
    }
    /// Dispatch to the correct EOS calculation
    /// If EosChoice is Linear, the displaced specific 
@@ -182,7 +199,7 @@ void Eos::computeSpecVolDisp(Array2DReal SpecVolDisplaced,
           KOKKOS_LAMBDA(I4 ICell, I4 KChunk) {
              computeSpecVolTeos10(LocSpecVolDisplaced, ICell, KChunk,
                                             ConservTemp, AbsSalinity, 
-                                            Pressure, KDisp);
+                                            Pressure, KDisp, DispType);
           });
    }
    deepCopy(SpecVolDisplaced, LocSpecVolDisplaced); /// Copy result back to output view

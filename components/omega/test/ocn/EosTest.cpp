@@ -40,11 +40,12 @@ const Real TeosExpValue      = 0.0009732819628;       // Expected value for TEOS
 const Real LinearExpValue    = 0.0009784735812133072; // Expected value for Linear eos
 
 /// Test input values
-double Sa                    = 30.0;   // Absolute Salinity in g/kg
-double Ct                    = 10.0;   // Conservative Temperature in degC
-double P                     = 1000.0; // Pressure in dbar
-const I4 KDisp               = 1;      // Displace parcel to K=1 for TEOS-10 eos
-const Real RTol              = 1e-10;  // Relative tolerance for isApprox checks
+double Sa                    = 30.0;       // Absolute Salinity in g/kg
+double Ct                    = 10.0;       // Conservative Temperature in degC
+double P                     = 1000.0;     // Pressure in dbar
+const I4 KDisp               = 1;          // Displace parcel to K=1 for TEOS-10 eos
+const std::string DispType   = "relative"; // Displacement type for TEOS-10 eos
+const Real RTol              = 1e-10;      // Relative tolerance for isApprox checks
 
 /// The initialization routine for Eos testing. It calls various
 /// init routines, including the creation of the default decomposition.
@@ -180,7 +181,8 @@ int testEosLinearDisplaced() {
    deepCopy(TestEos->SpecVol, 0.0);
 
    /// Compute displaced specific volume
-   TestEos->computeSpecVolDisp(TestEos->SpecVolDisplaced, TArray, SArray, PArray, KDisp);
+   TestEos->computeSpecVolDisp(TestEos->SpecVolDisplaced, TArray, SArray, 
+      PArray, KDisp, DispType);
 
    /// Check all array values against expected value
    int numMismatches = 0;
@@ -270,7 +272,8 @@ int testEosTeos10Displaced() {
    deepCopy(TestEos->SpecVol, 0.0);
 
    /// Compute displaced specific volume
-   TestEos->computeSpecVolDisp(TestEos->SpecVolDisplaced, TArray, SArray, PArray, KDisp);
+   TestEos->computeSpecVolDisp(TestEos->SpecVolDisplaced, TArray, SArray, 
+      PArray, KDisp, DispType);
 
    /// Check all array values against expected value
    int numMismatches = 0;

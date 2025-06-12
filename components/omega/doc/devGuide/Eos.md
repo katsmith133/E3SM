@@ -4,9 +4,10 @@
 
 Omega includes an `Eos` class that provides functions that compute `SpecVol` and `SpecVolDisplaced`. 
 Current EOS options are a linear EOS or an EOS computed using the TEOS-10 75 term expansion from 
-Roquet et al. 2015. `SpecVol` is provided for either of these EOS options, while `SpecVolDisplaced` 
-is only available for the TEOS-10 option. Trying to get `SpecVolDisplaced` while using the linear EOS
-type will throw a run time error.
+Roquet et al. 2015. If `SpecVolDisplaced` is calculated with the linear EOS option, it will be equal 
+to `SpecVol` as there is no pressure/depth dependence for the linear EOS. `SpecVolDisplaced` has two 
+options: `"absolute"` computes specific volume adiabatically displaced to `KDisp` for all `k` values
+and `"relative"` computes specific volume adiabatically displaced to `K + KDisp`.
 
 ## Eos type
 
@@ -40,14 +41,17 @@ To compute `SpecVol` for a particular set of temperature, salinity, and pressure
 Eos.computeSpecVol(SpecVol, ConsrvTemp, AbsSalinity, Pressure);
 ```
 `SpecVolDisplaced` is calculated using local temperature and salinity values, but a pressure 
-value at KDisp. To compute `SpecVolDisplaced` for a particular set of temperature, salinity, 
+value at `KDisp` or `K + KDisp` depending on whether `"absolute"` or `"relative"` is provided 
+for `DispType`. To compute `SpecVolDisplaced` for a particular set of temperature, salinity, 
 and pressure arrays and displaced vertical index level, do
 ```c++
-Eos.computeSpecVolDisp(SpecVol, ConsrvTemp, AbsSalinity, Pressure, KDisp);
+Eos.computeSpecVolDisp(SpecVol, ConsrvTemp, AbsSalinity, Pressure, KDisp, DispType);
 ```
-where KDisp is the vertical `k` index of the level you want to displace the specific volume to. 
-For example, to displace the specific volume to the surface, set `KDisp = 0` (or `minLevelCell` 
-when that becomes available).
+where `KDisp` is the vertical `k` index of the level you want to displace all of the specific 
+volume to if `DispType = "absolute"` and is the number of `k` levels you want to displace each
+specific volume level to if `DispType = "relative"`. For example, to displace the entire specific 
+volume column to the surface, set `KDisp = 0` and `DispType = "absolute"`, and to displace each 
+level to one below, set `KDisp = 1` and `DispType = "relative"`.
 
 ## Removal of Eos
 
