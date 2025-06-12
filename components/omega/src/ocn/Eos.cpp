@@ -154,6 +154,17 @@ void Eos::computeSpecVolDisp(Array2DReal SpecVolDisplaced,
                          I4 KDisp) {
    OMEGA_SCOPE(LocSpecVolDisplaced, SpecVolDisplaced); /// Local view for computation
    deepCopy(LocSpecVolDisplaced, 0.0);
+   /// Check to make sure KDisp is within bounds 
+   /// (change bounds to minLevelCell and 
+   /// maxLevelCell when the become available?)
+   if (KDisp >= NVertLevels || KDisp < 0) {
+      LOG_ERROR("Eos::computeSpecVolDisp: KDisp {} is"
+               "either < 0 or out of bounds for NVertLevels {}", 
+               KDisp, NVertLevels);
+   }
+   /// Dispatch to the correct EOS calculation
+   /// If EosChoice is Linear, the displaced specific 
+   /// volume is the same as the specific volume
    if (EosChoice == EosType::Linear) {
       LOG_INFO(
           "Eos::computeSpecVolDisp called with Linear EOS. "

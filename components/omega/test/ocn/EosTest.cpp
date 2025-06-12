@@ -142,7 +142,7 @@ int testEosLinear() {
    Array2DReal SpecVol = TestEos->SpecVol;
    parallelReduce("CheckSpecVolMatrix-linear", {Mesh->NCellsAll, NVertLevels},
                   KOKKOS_LAMBDA(int i, int j, int &localCount) {
-                     if (!isApprox(SpecVol(i, j), LinearExpValue, RTol)) {
+                     if (!isApproxGPU(SpecVol(i, j), LinearExpValue, RTol)) {
                         localCount++;
                      }
                   },
@@ -187,7 +187,7 @@ int testEosLinearDisplaced() {
    Array2DReal SpecVolDisplaced = TestEos->SpecVolDisplaced;
    parallelReduce("CheckSpecVolDispMatrix-Teos", {Mesh->NCellsAll, NVertLevels},
                   KOKKOS_LAMBDA(int i, int j, int &localCount) {
-                     if (!isApprox(SpecVolDisplaced(i, j), LinearExpValue, RTol)) {
+                     if (!isApproxGPU(SpecVolDisplaced(i, j), LinearExpValue, RTol)) {
                         localCount++;
                      }
                   },
@@ -232,7 +232,7 @@ int testEosTeos10() {
    Array2DReal SpecVol = TestEos->SpecVol;
    parallelReduce("CheckSpecVolMatrix-Teos", {Mesh->NCellsAll, NVertLevels},
                   KOKKOS_LAMBDA(int i, int j, int &localCount) {
-                     if (!isApprox(SpecVol(i, j), TeosExpValue, RTol)) {
+                     if (!isApproxGPU(SpecVol(i, j), TeosExpValue, RTol)) {
                         localCount++;
                      }
                   },
@@ -277,7 +277,7 @@ int testEosTeos10Displaced() {
    Array2DReal SpecVolDisplaced = TestEos->SpecVolDisplaced;
    parallelReduce("CheckSpecVolDispMatrix-Teos", {Mesh->NCellsAll, NVertLevels},
                   KOKKOS_LAMBDA(int i, int j, int &localCount) {
-                     if (!isApprox(SpecVolDisplaced(i, j), TeosExpValue, RTol)) {
+                     if (!isApproxGPU(SpecVolDisplaced(i, j), TeosExpValue, RTol)) {
                         localCount++;
                      }
                   },

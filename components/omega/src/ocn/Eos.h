@@ -120,20 +120,12 @@ class Eos {
          if (KDisp == 0) {
             // No displacement
             SpecVol(ICell, K) = calcRefProfile(Pressure(ICell, K)) +
-                                calcDelta(SpecVolPCoeffs, KVec, Pressure(ICell, K));
+                              calcDelta(SpecVolPCoeffs, KVec, Pressure(ICell, K));
          } else {
             // Displacement, use the displaced pressure
-            // Check to make sure KDisp is within bounds 
-            // (change bounds to minLevelCell and 
-            // maxLevelCell when the become available?)
-            if (KDisp >= NVertLevels || KDisp < 0) {
-               LOG_ERROR("Eos::computeSpecVolTeos10: KDisp {} is"
-                         "either < 0 or out of bounds for NVertLevels {}", 
-                         KDisp, NVertLevels);
-            }
             SpecVol(ICell, K) =
-                calcRefProfile(Pressure(ICell, KDisp)) +
-                calcDelta(SpecVolPCoeffs, KVec, Pressure(ICell, KDisp));
+               calcRefProfile(Pressure(ICell, KDisp)) +
+               calcDelta(SpecVolPCoeffs, KVec, Pressure(ICell, KDisp));
          }
       }
    }
@@ -256,12 +248,6 @@ class Eos {
    KOKKOS_FUNCTION Real calcDelta(const Array2DReal &SpecVolPCoeffs, 
                                   const I4 K, const Real P) const {
    
-      // Check if the pressure coefficients have been initialized
-      if (!PCoeffsInit) {
-         LOG_ERROR("Eos::calcDelta: calcPCoeffs must be called before calcDelta");
-         return;
-      }
-
       const Real Pu = 1e4;
       Real Pp       = P / Pu;
 
