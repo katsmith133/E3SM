@@ -73,7 +73,7 @@ $$
 + \int_{\partial V(t)} {\bf f}({\bf n},{\bf x},t)  \, dA
 $$ (continuous-momentum)
 
-These equations are taken from [Kundu et al. 2016](https://www.amazon.com/dp/012405935X/) (4.5) for mass conservation and (4.17) for momentum conservation.
+These equations are taken from [Kundu et al. 2016](https://doi.org/10.1016/C2012-0-00611-4) (4.5) for mass conservation and (4.17) for momentum conservation.
 All notation is identical to Kundu, except that we use ${\bf v}$ for the three-dimensional velocity (${\bf u}$ will be used below for horizontal velocities) and ${\bf v}_r$ and $\partial V$ match the notation in [Ringler et al. 2013](https://www.sciencedirect.com/science/article/pii/S1463500313000760) Appendix A.2.
 
 
@@ -242,7 +242,7 @@ $$
 \phi = \overline{\phi} + \phi^\prime
 $$
 
-When deriving the Reynolds' averaged equations, averages of terms with a single prime are discarded by construction.  This is an attractive approach for Boussinesq ocean models since the density is assumed constant in all equations.  When the ocean model is non Boussinesq, this leads to difficulties.  For example, consider the first term in equation []{#h-momentum}, if a Reynolds' decomposition and averaging is performed, 
+When deriving the Reynolds' averaged equations, averages of terms with a single prime are discarded by construction.  This is an attractive approach for Boussinesq ocean models since the density is assumed constant in all equations.  When the ocean model is non Boussinesq, this leads to difficulties.  For example, consider the first term in equation [](#h-momentum), if a Reynolds' decomposition and averaging is performed, 
 
 $$
 \frac{d}{dt} \int_{A} \int_{z^{\text{bot}}}^{z^{\text{top}}} \rho \,  {\bf u}  \, dz \, dA = \frac{d}{dt} \int_{A} \int_{z^{\text{bot}}}^{z^{\text{top}}} (\overline{\rho {\bf u}} +  \,  \overline{\rho^\prime {\bf u}^\prime})  \, dz \, dA 
@@ -254,7 +254,7 @@ $$
 \phi = \hat{\phi} + \phi^"
 $$
 
-Where $\hat{\phi} \equiv \frac{\overline{\rho \phi}}{\overline{rho}}$, and the double prime indicates deviations from this density weighted mean.  In the definition, the overbar is an averaging operator with identical properties to a Reynolds' average.  Using this relation, we can relate Reynolds' average to Favre average by considering a the average of $\rho \phi$.  The standard Reynolds' approach gives
+Where $\hat{\phi} \equiv \frac{\overline{\rho \phi}}{\overline{\rho}}$, and the double prime indicates deviations from this density weighted mean.  In the definition, the overbar is an averaging operator with identical properties to a Reynolds' average.  Using this relation, we can relate Reynolds' average to Favre average by considering a the average of $\rho \phi$.  The standard Reynolds' approach gives
 
 $$
 \overline{\rho \phi} = \overline{\rho}\overline{\phi} + \overline{\rho^\prime \phi^\prime}
@@ -272,7 +272,7 @@ $$
 \overline{\phi} = \hat{\phi} + \frac{\overline{\rho^\prime \phi^\prime}}{\overline{\rho}}
 $$
 
-Throughout much of the ocean, we expect the second term to be $O(10^{-3})$ but could be large in highly turbulent regions.  With the adoption, all Omega variables will be interpreted as Favre averaged, but these variables will be very similar tothe traditional Reynolds' average for most flows.
+Throughout much of the ocean, we expect the second term to be $O(10^{-3})$ but could be large in highly turbulent regions.  With the adoption, all Omega variables will be interpreted as Favre averaged, but these variables will be very similar to the traditional Reynolds' average for most flows.
 
 ## 5. Layered Equations
 
@@ -281,7 +281,7 @@ Throughout much of the ocean, we expect the second term to be $O(10^{-3})$ but c
 In our non-Boussinesq hydrostatic framework, we adopt a vertical coordinate based on pseudo-height, 
 
 $$
-\tilde{z}(p) = -\frac{1}{\rho_0 g} \, p
+\tilde{z}(\hat{p}) = -\frac{1}{\rho_0 g} \, \hat{p}
 $$ (def-pseudo-height)
 
 The pseudo-height is simply the pressure normalized by two constants, a reference density $\rho_0$ and gravitational acceleration $g$.
@@ -289,10 +289,11 @@ A pseudo-height coordinate is effectively a pressure coordinate, but comes with 
 It is convenient to relate these variables using differentials as
 
 $$
-d\tilde{z} = -\frac{1}{\rho_0 g}\, dp = \frac{\rho}{\rho_0} \, dz
+d\tilde{z} = -\frac{1}{\rho_0 g}\, d\hat{p} = \frac{\hat{\rho}}{\rho_0} \, dz
 $$ (def-dtildez)
 
-where the second equality uses the hydrostatic balance $dp = -\rho g dz$.
+where the second equality uses the hydrostatic balance $d\hat{p} = -\hat{\rho} g dz$.  We note that hydrostatic balance applies equivalently to Favre averaged variables.
+
 This shows that the pseudo-height is nearly the same as the physical height. 
 
 In order to convert from $z$ to ${\tilde z}$ the pressure must be computed,
@@ -383,7 +384,27 @@ $$
 = 0
 $$ (Aintegral-tracer)
 
-where we converted to pseudo-height for the last two terms using [](#formula-pseudo-height) as the derivation is equally valid for a full field variable $\varphi$ or Reynolds' or Favre Averaged field ($\hat{\varphi}$). We next perform a Favre decomposition, noting that from the definition of a Favre average that $\overline{\rho \varphi} = \overline{\rho}\hat{\varphi}$
+where we converted to pseudo-height for the last two terms using [](#formula-pseudo-height).  Applying this same relation to the first two terms,
+
+$$
+\frac{d}{dt} \int_{A} {\tilde h}_k {\overline \varphi}^{\tilde{z}}_k   \, dA
++
+   \int_{\partial A}\left( {\tilde h}_k \, {\overline{\varphi \, {\bf u}}}^{\tilde{z}}_k  \, \right) \cdot {\bf n} \, dl
+ + \int_{A}\left[ \varphi \left({\tilde w} - {\tilde w}_r \right) \right]_{{\tilde z}={\tilde z}_k^{\text{top}}} \, dA
+ - \int_{A}\left[ \varphi \left({\tilde w} - {\tilde w}_r \right) \right]_{{\tilde z}={\tilde z}_{k+1}^{\text{bot}}} \, dA
+= 0.
+$$ (Aintegral-tracer2)
+
+The horizontal tracer flux term is expanded using $\varphi \equiv \overline{\varphi}^{\tilde{z}}_k + \delta \varphi$ and ${\bf u} \equiv \overline{\bf u}^{\tilde{z}}_k + \delta {\bf u}$ to yield 
+
+$$
+\frac{d}{dt} \int_{A} {\tilde h}_k {\overline \varphi}^{\tilde{z}}_k   \, dA
++
+   \int_{\partial A}\left( {\tilde h}_k \, \left(\left(\overline{\varphi}^{\tilde{z}}_k + \delta \varphi\right)\left(\overline{\bf u}^{\tilde{z}}_k + \delta {\bf u}\right)\right) \, \right) \cdot {\bf n} \, dl
+ + \int_{A}\left[ \varphi \left({\tilde w} - {\tilde w}_r \right) \right]_{{\tilde z}={\tilde z}_k^{\text{top}}} \, dA
+ - \int_{A}\left[ \varphi \left({\tilde w} - {\tilde w}_r \right) \right]_{{\tilde z}={\tilde z}_{k+1}^{\text{bot}}} \, dA
+= 0.
+$$
 
 $$
 \frac{1}{\rho} \frac{d}{dt} \int_{A} \int_{z^{\text{bot}}}^{z^{\text{top}}} \overline{\rho} \, \hat{\varphi} \, dz \, dA
