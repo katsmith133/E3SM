@@ -43,12 +43,11 @@ class Eos {
    Array2DReal SpecVol;              ///< Specific volume field
    Array2DReal SpecVolDisplaced;     ///< Displaced specific volume field
    Array2DReal SpecVolPCoeffs;       ///< Pressure coefficients for TEOS-10
-   mutable bool PCoeffsInit = false; ///< True if pressure coefficients are initialized (for TEOS-10)
 
    // Linear EOS parameters
-   Real DRhodT  = {-0.2};   ///< Thermal expansion coefficient (kg m^-3 degC^-1)
-   Real DRhodS  = {0.8};    ///< Haline contraction coefficient (kg m^-3)
-   Real RhoT0S0 = {1000.0}; ///< Reference density (kg m^-3) at (T,S)=(0,0)
+   KOKKOS_INLINE_FUNCTION static Real DRhodT  = -0.2;   ///< Thermal expansion coefficient (kg m^-3 degC^-1)
+   KOKKOS_INLINE_FUNCTION static Real DRhodS  = 0.8;    ///< Haline contraction coefficient (kg m^-3)
+   KOKKOS_INLINE_FUNCTION static Real RhoT0S0  = 1000.0; ///< Reference density (kg m^-3) at (T,S)=(0,0)
 
    std::string SpecVolFldName;           ///< Field name for specific volume
    std::string SpecVolDisplacedFldName;  ///< Field name for displaced specific volume
@@ -113,10 +112,9 @@ class Eos {
       const I4 KStart = KChunk * VecLength;
       for (int KVec = 0; KVec < VecLength; ++KVec) {
          const I4 K = KStart + KVec;
-         if (!PCoeffsInit) {
-            calcPCoeffs(SpecVolPCoeffs, KVec, ConservTemp(ICell, K), AbsSalinity(ICell, K));
-            PCoeffsInit = true;
-         }
+
+         calcPCoeffs(SpecVolPCoeffs, KVec, ConservTemp(ICell, K), AbsSalinity(ICell, K));
+
          if (KDisp == 0) {
             // No displacement
             SpecVol(ICell, K) = calcRefProfile(Pressure(ICell, K)) +
