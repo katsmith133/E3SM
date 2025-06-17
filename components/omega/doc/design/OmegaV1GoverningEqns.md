@@ -396,8 +396,8 @@ The differential form of the hydrostatic balance $dp = -\rho g dz$ implies that 
 
 The previous equation set [](#vh-mass) to [](#vh-momentum) is for an arbitrary layer bounded by $z^{\text{top}}$ above and $z^{\text{bot}}$ below.
 We now provide the details of the vertical discretization.
-The ocean is divided vertically into $K_{max}$ layers, with $k=1$ at the top and increasing downwards (opposite from $z$).
-Layer $k$ is bounded between $z_k^{\text{top}}$ above and $z_{k+1}^{\text{top}}$ below.
+The ocean is divided vertically into $K_{max}$ layers, with $k=0$ at the top and increasing downwards (opposite from $z$).
+Layer $k$ is bounded between $z_k^{\text{top}}$ above and $z_{k+1}^{\text{top}}$ below (i.e. $z_k^{\text{bot}} = z_{k+1}^{\text{top}}$).
 
 The layer thickness of layer k, used in MPAS-Ocean, is
 
@@ -408,11 +408,16 @@ $$ (def-thickness)
 In Omega we will use the pseudo-thickness,
 
 $$
-{\tilde h}_k(x,y,t) = \int_{{\tilde z}_{k+1}^{\text{top}}}^{{\tilde z}_k^{\text{top}}} d{\tilde z}
-= \frac{1}{\rho_0} \int_{z_{k+1}^{\text{top}}}^{z_k^{\text{top}}} \rho dz,
+{\tilde h}_k(x,y,t)
+&= \int_{{\tilde z}_{k+1}^{\text{top}}}^{{\tilde z}_k^{\text{top}}} d\tilde{z} \\
+&= \frac{1}{\rho_0} \int_{z_{k+1}^{\text{top}}}^{z_k^{\text{top}}} \rho \, dz \\
+&= \frac{1}{\rho_0 g} \left( \hat{p}_{k+1}^{\text{top}} - \hat{p}_k^{\text{top}} \right)
 $$ (def-pseudo-thickness)
 
-which is the mass per unit area in the layer, normalized by $\rho_0$. The density-weighted average of any variable $\phi({\bf x},t)$ in layer $k$ is
+which is the mass per unit area in the layer, normalized by $\rho_0$. This pseudo-thickness and layer-averaging will be used to express conservation laws in a mass-weighted coordinate system.  Pseudo-thickness, rather than geometric
+thickness will be the prognostic variable in Omega.
+
+The density-weighted average of any variable $\phi({\bf x},t)$ in layer $k$ is
 
 $$
 {\overline \phi}^{\tilde{z}}_k(x,y,t) =
@@ -436,6 +441,7 @@ $$
 {\tilde h}_k {\overline \phi}^{\tilde{z}}_k(x,y,t).
 $$ (h-phi)
 
+This relation is frequently used in discretized fluxes and conservation equations to replace integrals with layer-mean quantities.
 
 ### Layered Tracer & Mass
 
