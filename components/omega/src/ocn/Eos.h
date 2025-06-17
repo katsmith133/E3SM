@@ -45,9 +45,9 @@ class Eos {
    Array2DReal SpecVolPCoeffs;       ///< Pressure coefficients for TEOS-10
 
    // Linear EOS parameters
-   KOKKOS_INLINE_FUNCTION static Real DRhodT  = -0.2;   ///< Thermal expansion coefficient (kg m^-3 degC^-1)
-   KOKKOS_INLINE_FUNCTION static Real DRhodS  = 0.8;    ///< Haline contraction coefficient (kg m^-3)
-   KOKKOS_INLINE_FUNCTION static Real RhoT0S0  = 1000.0; ///< Reference density (kg m^-3) at (T,S)=(0,0)
+   KOKKOS_INLINE_FUNCTION static Real DRhodT;  ///< Thermal expansion coefficient (kg m^-3 degC^-1)
+   KOKKOS_INLINE_FUNCTION static Real DRhodS;  ///< Haline contraction coefficient (kg m^-3)
+   KOKKOS_INLINE_FUNCTION static Real RhoT0S0; ///< Reference density (kg m^-3) at (T,S)=(0,0)
 
    std::string SpecVolFldName;           ///< Field name for specific volume
    std::string SpecVolDisplacedFldName;  ///< Field name for displaced specific volume
