@@ -219,15 +219,19 @@ horizontal momentum:
 $$
 & \frac{d}{dt} \int_{A} \int_{z^{\text{bot}}}^{z^{\text{top}}} \rho \, {\bf u} \, dz \, dA
 +
-   \int_{\partial A}\left( \int_{z^{\text{bot}}}^{z^{\text{top}}}\rho\, {\bf u} \otimes {\bf u} \, dz \right) \cdot {\bf n} \, dl
- + \int_{A}\left[ \rho\, {\bf u} \left(w - w_r \right) \right]_{z=z^{\text{top}}} \, dA
- - \int_{A}\left[ \rho\, {\bf u} \left(w - w_r \right) \right]_{z=z^{\text{bot}}} \, dA
-\\ & \; =
-\int_{A} \int_{z^{\text{bot}}}^{z^{\text{top}}} \rho \, {\bf g}_\perp \, dz \, dA
+\int_{\partial A} \left( \int_{z^{\text{bot}}}^{z^{\text{top}}} \rho \, {\bf u} \otimes {\bf u} \, dz \right) \cdot {\bf n}_\perp \, dl \\
+& +
+\int_{A} \rho \, {\bf u} \left[ (w - w_r) - {\bf u} \cdot \nabla z^{\text{top}} \right]_{z = z^{\text{top}}} \, dA
+-
+\int_{A} \rho \, {\bf u} \left[ (w - w_r) - {\bf u} \cdot \nabla z^{\text{bot}} \right]_{z = z^{\text{bot}}} \, dA \\
+& =
+\int_{A} \int_{z^{\text{bot}}}^{z^{\text{top}}} \rho \, {\bf b}_\perp \, dz \, dA
 +
-   \int_{\partial A}\left( \int_{z^{\text{bot}}}^{z^{\text{top}}}\,  {\bf f}_\perp \, dz \right) \, dl
- + \int_{A}\left[  {\bf f}_\perp \right]_{z=z^{\text{top}}} \, dA
- - \int_{A}\left[  {\bf f}_\perp \right]_{z=z^{\text{bot}}} \, dA
+\int_{\partial A} \left( \int_{z^{\text{bot}}}^{z^{\text{top}}} {\bf f}_\perp \, dz \right) \, dl \\
+& +
+\int_{A} \left[ {\bf f}_\perp \right]_{z = z^{\text{top}}} \, dA
+-
+\int_{A} \left[ {\bf f}_\perp \right]_{z = z^{\text{bot}}} \, dA
 $$ (h-momentum)
 
 vertical momentum:
@@ -235,39 +239,51 @@ vertical momentum:
 $$
 & \frac{d}{dt} \int_{A} \int_{z^{\text{bot}}}^{z^{\text{top}}} \rho \, w \, dz \, dA
 +
-   \int_{\partial A}\left( \int_{z^{\text{bot}}}^{z^{\text{top}}}\rho\, w \, {\bf u} \, dz \right) \cdot {\bf n} \, dl
- + \int_{A}\left[ \rho\, w \left(w - w_r \right) \right]_{z=z^{\text{top}}} \, dA
- - \int_{A}\left[ \rho\, w \left(w - w_r \right) \right]_{z=z^{\text{bot}}} \, dA
-\\ & \; =
-\int_{A} \int_{z^{\text{bot}}}^{z^{\text{top}}} \rho \, g_z \, dz \, dA
+\int_{\partial A} \left( \int_{z^{\text{bot}}}^{z^{\text{top}}} \rho \, w \, {\bf u} \, dz \right) \cdot {\bf n}_\perp \, dl \\
+& +
+\int_{A} \rho \, w \left[ (w - w_r) - {\bf u} \cdot \nabla z^{\text{top}} \right]_{z = z^{\text{top}}} \, dA
+-
+\int_{A} \rho \, w \left[ (w - w_r) - {\bf u} \cdot \nabla z^{\text{bot}} \right]_{z = z^{\text{bot}}} \, dA \\
+& =
+\int_{A} \int_{z^{\text{bot}}}^{z^{\text{top}}} \rho \, b_z \, dz \, dA
 +
-   \int_{\partial A}\left( \int_{z^{\text{bot}}}^{z^{\text{top}}}\,  f_z \, dz \right) \, dl
- + \int_{A}\left[  f_z \right]_{z=z^{\text{top}}} \, dA
- - \int_{A}\left[  f_z \right]_{z=z^{\text{bot}}} \, dA
+\int_{\partial A} \left( \int_{z^{\text{bot}}}^{z^{\text{top}}} f_z \, dz \right) \, dl \\
+& +
+\int_{A} \left[ f_z \right]_{z = z^{\text{top}}} \, dA
+-
+\int_{A} \left[ f_z \right]_{z = z^{\text{bot}}} \, dA
 $$ (v-momentum)
 
-where the potential gradient vector is ${\bf g} = ({\bf g}_\perp, g_z)$ and the surface forces are ${\bf f} = ({\bf f}_\perp, f_z)$.
+where the potential gradient vector is ${\bf b} = ({\bf b}_\perp, b_z)$ and the surface forces are ${\bf f} = ({\bf f}_\perp, f_z)$.
 
-The hydrostatic approximation assumes that the first order balance in vertical momentum is between the pressure gradient and buoyancy, and that all other terms are negligible (advection, dissipation, and other forces).
+The hydrostatic approximation applies to the vertical component of the momentum equation and assumes that the leading-order balance is between the vertical pressure gradient and the gravitational body force. All other terms---such as vertical acceleration, advection, and viscous or turbulent stresses---are assumed to be negligible in comparison.
 Applying this assumption to [](#v-momentum),
 
 $$
-\int_{A} \int_{z^{\text{bot}}}^{z^{\text{top}}} \rho \, g_z \, dz \, dA
- + \int_{A}\left[  f_z \right]_{z=z^{\text{top}}} \, dA
- - \int_{A}\left[  f_z \right]_{z=z^{\text{bot}}} \, dA
- = 0 \\
-\int_{A} \int_{z^{\text{bot}}}^{z^{\text{top}}} \rho \, g \, dz \, dA
- + \int_{A}\left[  p \right]_{z=z^{\text{top}}} \, dA
- - \int_{A}\left[  p \right]_{z=z^{\text{bot}}} \, dA
- = 0 \\
-\int_{A}\left( \int_{z^{\text{bot}}}^{z^{\text{top}}} \rho \, g \, dz
- + \left[  p \right]_{z=z^{\text{top}}}
- - \left[  p \right]_{z=z^{\text{bot}}} \right) dA
- = 0 ,
+\int_A \int_{z^{\text{bot}}}^{z^{\text{top}}} \rho \, b_z \, dz \, dA
++ \int_A \left[ f_z \right]_{z = z^{\text{top}}} \, dA
+- \int_A \left[ f_z \right]_{z = z^{\text{bot}}} \, dA = 0
+$$ (v-hydrostatic1)
+
+Assuming the vertical body force is gravity, $b_z = -g$, and the vertical surface stress is from pressure, $f_z = -p$, the equation becomes:
+
+$$
+- \int_A \int_{z^{\text{bot}}}^{z^{\text{top}}} \rho g \, dz \, dA
+- \int_A \left[ p \right]_{z = z^{\text{top}}} \, dA
++ \int_A \left[ p \right]_{z = z^{\text{bot}}} \, dA = 0
+$$ (v-hydrostatic2)
+
+Although the top and bottom surfaces may be sloping, the vertical component of the pressure force simplifies to $\pm p \, dA$ to leading order. This is because the projection of the pressure force onto the vertical direction introduces a factor of $\hat{\bf n} \cdot \hat{\bf z} \approx 1 - \tfrac{1}{2}|\nabla z|^2$, while the sloping surface area element adds a compensating factor of $\sqrt{1 + |\nabla z|^2} \approx 1 + \tfrac{1}{2}|\nabla z|^2$. These cancel to second order, and the net vertical pressure force is simply the pressure value multiplied by the horizontal area element $dA$. Thus, no explicit slope terms appear in the hydrostatic balance.
+
+Rewriting:
+
+$$
+\int_A \left( \int_{z^{\text{bot}}}^{z^{\text{top}}} \rho g \, dz
++ \left[ p \right]_{z = z^{\text{top}}}
+- \left[ p \right]_{z = z^{\text{bot}}} \right) dA = 0
 $$ (v-hydrostatic)
 
-where $g$ is Earth's gravitational accelleration, and $p({\bf x},t)$ is the fluid pressure.
-Because this is valid for any horizontal region $A$, the integrand may be expressed as a general equation,
+Because this equation holds for any horizontal region $A$, the integrand must vanish, yielding the hydrostatic pressure relation:
 
 $$
  \left[  p \right]_{z=z^{\text{bot}}}
@@ -275,6 +291,8 @@ $$
  \left[  p \right]_{z=z^{\text{top}}}
  + \int_{z^{\text{bot}}}^{z^{\text{top}}} \rho \, g \, dz.
 $$ (integral-hydrostatic)
+
+
 
 Taking the limit as $dz \rightarrow 0$, we arrive at the typical form of the hydrostatic approximation,
 
