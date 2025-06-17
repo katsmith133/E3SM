@@ -83,7 +83,8 @@ All notation is identical to Kundu, except that we use ${\bf v}$ for the three-d
 
 The tracer equation is simply mass conservation, where the conserved quantity is the tracer mass $\rho \varphi$, as $\varphi$ is the tracer concentration per unit mass.
 In all three equations, the first term is the change of the quantity within the control volume; the second term is the flux through the moving boundary.
-If the control surface moves with the fluid in a Lagrangian fashion, then ${\bf v}_r={\bf v}$ and the second term is zero.
+If the control surface moves with the fluid in a Lagrangian fashion, then ${\bf v}_r={\bf v}$ and the second term (flux through the boundary) vanishes---there is no net mass, momentum, or tracer transport across the moving surface.
+
 
 The momentum equation is an expression of Newton's second law and includes two types of external forces.
 The first is the body force, represented here as ${\bf b}({\bf x}, t)$, which encompasses any volumetric force acting throughout the fluid, such as gravitational acceleration or the Coriolis force. In some contexts, body forces may be expressible as the gradient of a potential, ${\bf b} = -\nabla_{3D} \Phi$, but this is not assumed in general.
