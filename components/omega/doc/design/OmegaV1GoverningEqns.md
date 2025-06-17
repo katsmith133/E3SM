@@ -384,8 +384,8 @@ $$ (def-pseudo-velocity)
 
 As above, $\tilde{w}$ has identical units and very similar values to $w$. But in a non-Boussinesq model, it is the vertical *mass* transport that is the physically relevant quantity, not the volume transport. To this end, $\rho w$ is the mass transport per unit area in kg/m$^2$/s. The pseudo-velocity *is* the Eulerian mass transport, but with a convenient normalization of $\rho_0$.
 
-[Griffies 2018](https://www.amazon.com/Fundamentals-Climate-Models-Stephen-Griffies-ebook/dp/B07DMWP8L7) p. 37  argues for the use of pseudo-velocities, which he calls the density-weighted velocity, for non-Boussinesq models.
-Griffies recommends a value of $\rho_0=1035$ kg/m$^3$, following p. 47 of [Gill (1982)](https://www.amazon.com/Atmosphere-Ocean-Dynamics-International-Geophysics-30/dp/0122835220), because ocean density varies less than 2% from that value.
+[Griffies 2018](https://doi.org/10.2307/j.ctv301gzg) p. 37  argues for the use of pseudo-velocities, which he calls the density-weighted velocity, for non-Boussinesq models.
+Griffies recommends a value of $\rho_0=1035$ kg/m$^3$, following p. 47 of [Gill (1982)](https://doi.org/10.1016/S0074-6142(08)60028-5), because ocean density varies less than 2% from that value.
 
 The use of a constant $\rho_0$ in defining pseudo-height does not imply the Boussinesq approximation. In Boussinesq models, $\rho$ is set to $\rho_0$ everywhere except in the buoyancy term (i.e., the vertical pressure gradient or gravitational forcing). Here, by contrast, we retain the full $\rho$ in all terms, and use $\rho_0$ only as a normalization constant—for example, so that $d\tilde{z} \approx dz$ when $\rho \approx \rho_0$. This preserves full mass conservation while making vertical units more intuitive.
 
@@ -553,7 +553,7 @@ They also include **vertical stress forces** (e.g., wind stress at the ocean sur
 
 #### Pressure Term
 
-The pressure force term may be converted from the boundary to the interior with Gauss' divergence theorem (see [Kundu et al. 2016](https://www.amazon.com/dp/012405935X/) p. 119),
+The pressure force term may be converted from the boundary to the interior with Gauss' divergence theorem (see [Kundu et al. 2016](https://doi.org/10.1016/C2012-0-00611-4) p. 119),
 
 $$
 - \int_{\partial V(t)} p \, \mathbf{n} \, dA
@@ -571,7 +571,7 @@ $$ (gradp-h)
 
 #### Stress Term
 
-Likewise, the stress tensor integrated over the surface may be converted to a volume integral with Gauss' theorem ([Kundu et al. 2016](https://www.amazon.com/dp/012405935X/) p. 125 eqn 4.20b),
+Likewise, the stress tensor integrated over the surface may be converted to a volume integral with Gauss' theorem ([Kundu et al. 2016](https://doi.org/10.1016/C2012-0-00611-4) p. 125 eqn 4.20b),
 
 $$
 \int_{\partial V(t)} \boldsymbol{\tau} \cdot \mathbf{n} \, dA
@@ -1267,7 +1267,7 @@ This section is for references without webpage links. These are mostly textbooks
 
 ## OLD: Continuous Equations
 
-The continuous form of the conservation equations are as follows. See [Kundu et al. 2016](https://www.amazon.com/dp/012405935X/), chapter 4, eqns 4.7 and 4.22 or the [MOM5 manual](https://mom-ocean.github.io/assets/pdfs/MOM5_manual.pdf) eqn 7.7. This is before any assumptions are made, so this is a compressible, non-hydrostatic, non-Boussinesq fluid. Here all variables are a function of $(x,y,z)$, ${\bf u}_{3D}$ denotes the three-dimensional velocity vector, ${\bf u}_{3D} \otimes {\bf u}_{3D} = {\bf u}_{3D}{\bf u}_{3D}^T$ is the tensor product, $\nabla_{3D}$ is the three-dimensional gradient, $D/Dt$ is the material derivative, and other variables defined in the [Variable Definition Section](#variable-definitions) below.
+The continuous form of the conservation equations are as follows. See [Kundu et al. 2016](https://doi.org/10.1016/C2012-0-00611-4), chapter 4, eqns 4.7 and 4.22 or the [MOM5 manual](https://mom-ocean.github.io/assets/pdfs/MOM5_manual.pdf) eqn 7.7. This is before any assumptions are made, so this is a compressible, non-hydrostatic, non-Boussinesq fluid. Here all variables are a function of $(x,y,z)$, ${\bf u}_{3D}$ denotes the three-dimensional velocity vector, ${\bf u}_{3D} \otimes {\bf u}_{3D} = {\bf u}_{3D}{\bf u}_{3D}^T$ is the tensor product, $\nabla_{3D}$ is the three-dimensional gradient, $D/Dt$ is the material derivative, and other variables defined in the [Variable Definition Section](#variable-definitions) below.
 
 momentum:
 
