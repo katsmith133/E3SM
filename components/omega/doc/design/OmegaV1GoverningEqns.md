@@ -71,7 +71,7 @@ $$
 &\frac{d}{dt} \int_{V(t)} \rho({\bf x},t)\,  {\bf v}({\bf x},t) \, dV
 + \int_{\partial V(t)}\rho({\bf x},t)\, {\bf v}({\bf x},t) \left({\bf v}({\bf x},t) - {\bf v}_r \right) \cdot {\bf n} \, dA
 \\ & \; \; \; =
-\int_{V(t)} \rho({\bf x},t) \, {\bf g}\, dV
+\int_{V(t)} \rho({\bf x},t) \, {\bf b}({\bf x},t)\, dV
 + \int_{\partial V(t)} {\bf f}({\bf n},{\bf x},t)  \, dA
 $$ (continuous-momentum)
 
@@ -85,12 +85,10 @@ The tracer equation is simply mass conservation, where the conserved quantity is
 In all three equations, the first term is the change of the quantity within the control volume; the second term is the flux through the moving boundary.
 If the control surface moves with the fluid in a Lagrangian fashion, then ${\bf v}_r={\bf v}$ and the second term is zero.
 
-The momentum equation  is an expression of Newton's second law and has two additional terms on the right hand side.
-The first additional term is the body force, $\rho {\bf g} dV$, where ${\bf g}$ may be expressed as the gradient of a potential ${\bf g}= - \nabla_{3D} \Phi$ for conservative body forces.
-Note ${\bf g}$ is general here and not yet Earth's gravity.
-Body forces also include forces from a rotating frame of reference, such as the Coriolis force.
-The last term is due to all surface forces ${\bf f}$ that act on the surface of the fluid element, including pressure and viscous stresses.
-The momentum equation derivation may also be found in [Leishman 2025](https://eaglepubs.erau.edu/introductiontoaerospaceflightvehicles/chapter/conservation-of-momentum-momentum-equation/#chapter-260-section-2), Chapter 21, equation 10.
+The momentum equation is an expression of Newton's second law and includes two types of external forces.
+The first is the body force, represented here as ${\bf b}({\bf x}, t)$, which encompasses any volumetric force acting throughout the fluid, such as gravitational acceleration or the Coriolis force. In some contexts, body forces may be expressible as the gradient of a potential, ${\bf b} = -\nabla_{3D} \Phi$, but this is not assumed in general.
+The second is the surface force ${\bf f}$, which acts on the boundary of the control volume and includes pressure and viscous stresses. These forces appear as surface integrals over the boundary and drive momentum exchange between adjacent fluid parcels or between the fluid and its environment.
+The derivation of the momentum equation may also be found in [Leishman 2025](https://eaglepubs.erau.edu/introductiontoaerospaceflightvehicles/chapter/conservation-of-momentum-momentum-equation/#chapter-260-section-2), Chapter 21, equation 10.
 
 ### Horizontal \& Vertical Separation
 
