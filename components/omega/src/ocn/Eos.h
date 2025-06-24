@@ -45,9 +45,9 @@ class Eos {
    Array2DReal SpecVolPCoeffs;       ///< Pressure coefficients for TEOS-10
 
    // Linear EOS parameters
-   KOKKOS_INLINE_FUNCTION static Real DRhodT;  ///< Thermal expansion coefficient (kg m^-3 degC^-1)
-   KOKKOS_INLINE_FUNCTION static Real DRhodS;  ///< Haline contraction coefficient (kg m^-3)
-   KOKKOS_INLINE_FUNCTION static Real RhoT0S0; ///< Reference density (kg m^-3) at (T,S)=(0,0)
+   Real DRhodT;  ///< Thermal expansion coefficient (kg m^-3 degC^-1)
+   Real DRhodS;  ///< Haline contraction coefficient (kg m^-3)
+   Real RhoT0S0; ///< Reference density (kg m^-3) at (T,S)=(0,0)
 
    std::string SpecVolFldName;           ///< Field name for specific volume
    std::string SpecVolDisplacedFldName;  ///< Field name for displaced specific volume
@@ -55,17 +55,15 @@ class Eos {
    std::string Name;                     ///< Name of this EOS instance
 
    /// Compute specific volume for all cells/levels
-   void computeSpecVol(Array2DReal SpecVol,
-                       const Array2DReal &ConservTemp,
+   void computeSpecVol(const Array2DReal &ConservTemp,
                        const Array2DReal &AbsSalinity,
                        const Array2DReal &Pressure);
 
    /// Compute displaced specific volume (for vertical displacement)
-   void computeSpecVolDisp(Array2DReal SpecVol,
-                       const Array2DReal &ConservTemp,
-                       const Array2DReal &AbsSalinity,
-                       const Array2DReal &Pressure,
-                       I4 KDisp, const std::string &DispType);
+   void computeSpecVolDisp(const Array2DReal &ConservTemp,
+                           const Array2DReal &AbsSalinity,
+                           const Array2DReal &Pressure,
+                           I4 KDisp);
 
    /// Initialize EOS from config and mesh
    static I4 init();
@@ -97,7 +95,7 @@ class Eos {
       for (int KVec = 0; KVec < VecLength; ++KVec) {
          const I4 K = KStart + KVec;
          SpecVol(ICell, K) =
-             1.0 / (RhoT0S0 + (DRhodT * ConservTemp(ICell, K) +
+             1.0_Real / (RhoT0S0 + (DRhodT * ConservTemp(ICell, K) +
                                DRhodS * AbsSalinity(ICell, K)));
       }
    }
@@ -108,7 +106,7 @@ class Eos {
                                              const Array2DReal &ConservTemp,
                                              const Array2DReal &AbsSalinity,
                                              const Array2DReal &Pressure,
-                                             I4 KDisp, const std::string &DispType) {
+                                             I4 KDisp) {
       const I4 KStart = KChunk * VecLength;
       for (int KVec = 0; KVec < VecLength; ++KVec) {
          const I4 K = KStart + KVec;
@@ -121,19 +119,11 @@ class Eos {
                               calcDelta(SpecVolPCoeffs, KVec, Pressure(ICell, K));
          } else {
             // Displacement, use the displaced pressure
-            if (DispType == "absolute") {
-               I4 KTmp = Kokkos::min(KDisp, NVertLevels-1);
-               KTmp    = Kokkos::max(0, KTmp);
-               SpecVol(ICell, K) =
-                  calcRefProfile(Pressure(ICell, KTmp)) +
-                  calcDelta(SpecVolPCoeffs, KVec, Pressure(ICell, KTmp));
-            } else if (DispType == "relative") {
-               I4 KTmp = Kokkos::min(K + KDisp, NVertLevels-1);
-               KTmp    = Kokkos::max(0, KTmp);
-               SpecVol(ICell, K) =
-                  calcRefProfile(Pressure(ICell, KTmp)) +
-                  calcDelta(SpecVolPCoeffs, KVec, Pressure(ICell, KTmp));
-            }
+            I4 KTmp = Kokkos::min(K + KDisp, NVertLevels-1);
+            KTmp    = Kokkos::max(0, KTmp);
+            SpecVol(ICell, K) =
+               calcRefProfile(Pressure(ICell, KTmp)) +
+               calcDelta(SpecVolPCoeffs, KVec, Pressure(ICell, KTmp));
          }
       }
    }
@@ -143,87 +133,87 @@ class Eos {
    KOKKOS_FUNCTION void calcPCoeffs(Array2DReal SpecVolPCoeffs, 
                                     const I4 K, const Real Ct, 
                                     const Real Sa) {
-      const Real SAu    = 40.0 * 35.16504 / 35.0;
-      const Real CTu    = 40.0;
-      const Real DeltaS = 24.0;
-      const Real Ss     = Kokkos::sqrt((Sa + DeltaS) / SAu);
-      Real Tt           = Ct / CTu;
+      constexpr Real SAu    = 40.0 * 35.16504 / 35.0;
+      constexpr Real CTu    = 40.0;
+      constexpr Real DeltaS = 24.0;
+      Real Ss               = Kokkos::sqrt((Sa + DeltaS) / SAu);
+      Real Tt               = Ct / CTu;
 
       /// Coefficients for the polynomial expansion
-      const Real V000 = 1.0769995862e-03;
-      const Real V100 = -3.1038981976e-04;
-      const Real V200 = 6.6928067038e-04;
-      const Real V300 = -8.5047933937e-04;
-      const Real V400 = 5.8086069943e-04;
-      const Real V500 = -2.1092370507e-04;
-      const Real V600 = 3.1932457305e-05;
-      const Real V010 = -1.5649734675e-05;
-      const Real V110 = 3.5009599764e-05;
-      const Real V210 = -4.3592678561e-05;
-      const Real V310 = 3.4532461828e-05;
-      const Real V410 = -1.1959409788e-05;
-      const Real V510 = 1.3864594581e-06;
-      const Real V020 = 2.7762106484e-05;
-      const Real V120 = -3.7435842344e-05;
-      const Real V220 = 3.5907822760e-05;
-      const Real V320 = -1.8698584187e-05;
-      const Real V420 = 3.8595339244e-06;
-      const Real V030 = -1.6521159259e-05;
-      const Real V130 = 2.4141479483e-05;
-      const Real V230 = -1.4353633048e-05;
-      const Real V330 = 2.2863324556e-06;
-      const Real V040 = 6.9111322702e-06;
-      const Real V140 = -8.7595873154e-06;
-      const Real V240 = 4.3703680598e-06;
-      const Real V050 = -8.0539615540e-07;
-      const Real V150 = -3.3052758900e-07;
-      const Real V060 = 2.0543094268e-07;
-      const Real V001 = -1.6784136540e-05;
-      const Real V101 = 2.4262468747e-05;
-      const Real V201 = -3.4792460974e-05;
-      const Real V301 = 3.7470777305e-05;
-      const Real V401 = -1.7322218612e-05;
-      const Real V501 = 3.0927427253e-06;
-      const Real V011 = 1.8505765429e-05;
-      const Real V111 = -9.5677088156e-06;
-      const Real V211 = 1.1100834765e-05;
-      const Real V311 = -9.8447117844e-06;
-      const Real V411 = 2.5909225260e-06;
-      const Real V021 = -1.1716606853e-05;
-      const Real V121 = -2.3678308361e-07;
-      const Real V221 = 2.9283346295e-06;
-      const Real V321 = -4.8826139200e-07;
-      const Real V031 = 7.9279656173e-06;
-      const Real V131 = -3.4558773655e-06;
-      const Real V231 = 3.1655306078e-07;
-      const Real V041 = -3.4102187482e-06;
-      const Real V141 = 1.2956717783e-06;
-      const Real V051 = 5.0736766814e-07;
-      const Real V002 = 3.0623833435e-06;
-      const Real V102 = -5.8484432984e-07;
-      const Real V202 = -4.8122251597e-06;
-      const Real V302 = 4.9263106998e-06;
-      const Real V402 = -1.7811974727e-06;
-      const Real V012 = -1.1736386731e-06;
-      const Real V112 = -5.5699154557e-06;
-      const Real V212 = 5.4620748834e-06;
-      const Real V312 = -1.3544185627e-06;
-      const Real V022 = 2.1305028740e-06;
-      const Real V122 = 3.9137387080e-07;
-      const Real V222 = -6.5731104067e-07;
-      const Real V032 = -4.6132540037e-07;
-      const Real V132 = 7.7618888092e-09;
-      const Real V042 = -6.3352916514e-08;
-      const Real V003 = -3.8088938393e-07;
-      const Real V103 = 3.6310188515e-07;
-      const Real V203 = 1.6746303780e-08;
-      const Real V013 = -3.6527006553e-07;
-      const Real V113 = -2.7295696237e-07;
-      const Real V023 = 2.8695905159e-07;
-      const Real V004 = 8.8302421514e-08;
-      const Real V104 = -1.1147125423e-07;
-      const Real V014 = 3.1454099902e-07;
-      const Real V005 = 4.2369007180e-09;
+      constexpr Real V000 = 1.0769995862e-03;
+      constexpr Real V100 = -3.1038981976e-04;
+      constexpr Real V200 = 6.6928067038e-04;
+      constexpr Real V300 = -8.5047933937e-04;
+      constexpr Real V400 = 5.8086069943e-04;
+      constexpr Real V500 = -2.1092370507e-04;
+      constexpr Real V600 = 3.1932457305e-05;
+      constexpr Real V010 = -1.5649734675e-05;
+      constexpr Real V110 = 3.5009599764e-05;
+      constexpr Real V210 = -4.3592678561e-05;
+      constexpr Real V310 = 3.4532461828e-05;
+      constexpr Real V410 = -1.1959409788e-05;
+      constexpr Real V510 = 1.3864594581e-06;
+      constexpr Real V020 = 2.7762106484e-05;
+      constexpr Real V120 = -3.7435842344e-05;
+      constexpr Real V220 = 3.5907822760e-05;
+      constexpr Real V320 = -1.8698584187e-05;
+      constexpr Real V420 = 3.8595339244e-06;
+      constexpr Real V030 = -1.6521159259e-05;
+      constexpr Real V130 = 2.4141479483e-05;
+      constexpr Real V230 = -1.4353633048e-05;
+      constexpr Real V330 = 2.2863324556e-06;
+      constexpr Real V040 = 6.9111322702e-06;
+      constexpr Real V140 = -8.7595873154e-06;
+      constexpr Real V240 = 4.3703680598e-06;
+      constexpr Real V050 = -8.0539615540e-07;
+      constexpr Real V150 = -3.3052758900e-07;
+      constexpr Real V060 = 2.0543094268e-07;
+      constexpr Real V001 = -1.6784136540e-05;
+      constexpr Real V101 = 2.4262468747e-05;
+      constexpr Real V201 = -3.4792460974e-05;
+      constexpr Real V301 = 3.7470777305e-05;
+      constexpr Real V401 = -1.7322218612e-05;
+      constexpr Real V501 = 3.0927427253e-06;
+      constexpr Real V011 = 1.8505765429e-05;
+      constexpr Real V111 = -9.5677088156e-06;
+      constexpr Real V211 = 1.1100834765e-05;
+      constexpr Real V311 = -9.8447117844e-06;
+      constexpr Real V411 = 2.5909225260e-06;
+      constexpr Real V021 = -1.1716606853e-05;
+      constexpr Real V121 = -2.3678308361e-07;
+      constexpr Real V221 = 2.9283346295e-06;
+      constexpr Real V321 = -4.8826139200e-07;
+      constexpr Real V031 = 7.9279656173e-06;
+      constexpr Real V131 = -3.4558773655e-06;
+      constexpr Real V231 = 3.1655306078e-07;
+      constexpr Real V041 = -3.4102187482e-06;
+      constexpr Real V141 = 1.2956717783e-06;
+      constexpr Real V051 = 5.0736766814e-07;
+      constexpr Real V002 = 3.0623833435e-06;
+      constexpr Real V102 = -5.8484432984e-07;
+      constexpr Real V202 = -4.8122251597e-06;
+      constexpr Real V302 = 4.9263106998e-06;
+      constexpr Real V402 = -1.7811974727e-06;
+      constexpr Real V012 = -1.1736386731e-06;
+      constexpr Real V112 = -5.5699154557e-06;
+      constexpr Real V212 = 5.4620748834e-06;
+      constexpr Real V312 = -1.3544185627e-06;
+      constexpr Real V022 = 2.1305028740e-06;
+      constexpr Real V122 = 3.9137387080e-07;
+      constexpr Real V222 = -6.5731104067e-07;
+      constexpr Real V032 = -4.6132540037e-07;
+      constexpr Real V132 = 7.7618888092e-09;
+      constexpr Real V042 = -6.3352916514e-08;
+      constexpr Real V003 = -3.8088938393e-07;
+      constexpr Real V103 = 3.6310188515e-07;
+      constexpr Real V203 = 1.6746303780e-08;
+      constexpr Real V013 = -3.6527006553e-07;
+      constexpr Real V113 = -2.7295696237e-07;
+      constexpr Real V023 = 2.8695905159e-07;
+      constexpr Real V004 = 8.8302421514e-08;
+      constexpr Real V104 = -1.1147125423e-07;
+      constexpr Real V014 = 3.1454099902e-07;
+      constexpr Real V005 = 4.2369007180e-09;
 
       SpecVolPCoeffs(5, K) = V005;
       SpecVolPCoeffs(4, K) = V014 * Tt + V104 * Ss + V004;
@@ -256,8 +246,8 @@ class Eos {
    KOKKOS_FUNCTION Real calcDelta(const Array2DReal &SpecVolPCoeffs, 
                                   const I4 K, const Real P) const {
    
-      const Real Pu = 1e4;
-      Real Pp       = P / Pu;
+      constexpr Real Pu = 1e4;
+      Real Pp           = P / Pu;
 
       Real Delta = ((((SpecVolPCoeffs(5, K) * Pp + SpecVolPCoeffs(4, K)) * Pp +
                       SpecVolPCoeffs(3, K)) * Pp + SpecVolPCoeffs(2, K)) * Pp +
@@ -267,14 +257,14 @@ class Eos {
 
    /// Calculate reference profile for TEOS-10
    KOKKOS_FUNCTION Real calcRefProfile(Real P) const {
-      const Real Pu  = 1e4;
-      const Real V00 = -4.4015007269e-05;
-      const Real V01 = 6.9232335784e-06;
-      const Real V02 = -7.5004675975e-07;
-      const Real V03 = 1.7009109288e-08;
-      const Real V04 = -1.6884162004e-08;
-      const Real V05 = 1.9613503930e-09;
-      Real Pp        = P / Pu;
+      constexpr Real Pu  = 1e4;
+      constexpr Real V00 = -4.4015007269e-05;
+      constexpr Real V01 = 6.9232335784e-06;
+      constexpr Real V02 = -7.5004675975e-07;
+      constexpr Real V03 = 1.7009109288e-08;
+      constexpr Real V04 = -1.6884162004e-08;
+      constexpr Real V05 = 1.9613503930e-09;
+      Real Pp            = P / Pu;
 
       Real V0 =
           (((((V05 * Pp + V04) * Pp + V03) * Pp + V02) * Pp + V01) * Pp + V00) * Pp;

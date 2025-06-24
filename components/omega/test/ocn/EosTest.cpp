@@ -19,6 +19,7 @@
 #include "MachEnv.h"
 #include "OceanTestCommon.h"
 #include "OmegaKokkos.h"
+#include "Pacer.h"
 #include "mpi.h"
 
 // added for debug
@@ -44,7 +45,6 @@ double Sa                    = 30.0;       // Absolute Salinity in g/kg
 double Ct                    = 10.0;       // Conservative Temperature in degC
 double P                     = 1000.0;     // Pressure in dbar
 const I4 KDisp               = 1;          // Displace parcel to K=1 for TEOS-10 eos
-const std::string DispType   = "relative"; // Displacement type for TEOS-10 eos
 const Real RTol              = 1e-10;      // Relative tolerance for isApprox checks
 
 /// The initialization routine for Eos testing. It calls various
@@ -136,14 +136,14 @@ int testEosLinear() {
    deepCopy(TestEos->SpecVol, 0.0);
 
    /// Compute specific volume
-   TestEos->computeSpecVol(TestEos->SpecVol, TArray, SArray, PArray);
+   TestEos->computeSpecVol(TArray, SArray, PArray);
 
    /// Check all array values against expected value
    int numMismatches = 0;
    Array2DReal SpecVol = TestEos->SpecVol;
    parallelReduce("CheckSpecVolMatrix-linear", {Mesh->NCellsAll, NVertLevels},
                   KOKKOS_LAMBDA(int i, int j, int &localCount) {
-                     if (!isApproxGPU(SpecVol(i, j), LinearExpValue, RTol)) {
+                     if (!isApprox(SpecVol(i, j), LinearExpValue, RTol)) {
                         localCount++;
                      }
                   },
@@ -178,18 +178,17 @@ int testEosLinearDisplaced() {
    deepCopy(SArray, Sa);
    deepCopy(TArray, Ct);
    deepCopy(PArray, P);
-   deepCopy(TestEos->SpecVol, 0.0);
+   deepCopy(TestEos->SpecVolDisplaced, 0.0);
 
    /// Compute displaced specific volume
-   TestEos->computeSpecVolDisp(TestEos->SpecVolDisplaced, TArray, SArray, 
-      PArray, KDisp, DispType);
+   TestEos->computeSpecVolDisp(TArray, SArray, PArray, KDisp);
 
    /// Check all array values against expected value
    int numMismatches = 0;
    Array2DReal SpecVolDisplaced = TestEos->SpecVolDisplaced;
-   parallelReduce("CheckSpecVolDispMatrix-Teos", {Mesh->NCellsAll, NVertLevels},
+   parallelReduce("CheckSpecVolDispMatrix-linear", {Mesh->NCellsAll, NVertLevels},
                   KOKKOS_LAMBDA(int i, int j, int &localCount) {
-                     if (!isApproxGPU(SpecVolDisplaced(i, j), LinearExpValue, RTol)) {
+                     if (!isApprox(SpecVolDisplaced(i, j), LinearExpValue, RTol)) {
                         localCount++;
                      }
                   },
@@ -227,14 +226,14 @@ int testEosTeos10() {
    deepCopy(TestEos->SpecVol, 0.0);
 
    /// Compute specific volume
-   TestEos->computeSpecVol(TestEos->SpecVol, TArray, SArray, PArray);
+   TestEos->computeSpecVol(TArray, SArray, PArray);
 
    /// Check all array values against expected value
    int numMismatches = 0;
    Array2DReal SpecVol = TestEos->SpecVol;
    parallelReduce("CheckSpecVolMatrix-Teos", {Mesh->NCellsAll, NVertLevels},
                   KOKKOS_LAMBDA(int i, int j, int &localCount) {
-                     if (!isApproxGPU(SpecVol(i, j), TeosExpValue, RTol)) {
+                     if (!isApprox(SpecVol(i, j), TeosExpValue, RTol)) {
                         localCount++;
                      }
                   },
@@ -269,18 +268,17 @@ int testEosTeos10Displaced() {
    deepCopy(SArray, Sa);
    deepCopy(TArray, Ct);
    deepCopy(PArray, P);
-   deepCopy(TestEos->SpecVol, 0.0);
+   deepCopy(TestEos->SpecVolDisplaced, 0.0);
 
    /// Compute displaced specific volume
-   TestEos->computeSpecVolDisp(TestEos->SpecVolDisplaced, TArray, SArray, 
-      PArray, KDisp, DispType);
+   TestEos->computeSpecVolDisp(TArray, SArray, PArray, KDisp);
 
    /// Check all array values against expected value
    int numMismatches = 0;
    Array2DReal SpecVolDisplaced = TestEos->SpecVolDisplaced;
    parallelReduce("CheckSpecVolDispMatrix-Teos", {Mesh->NCellsAll, NVertLevels},
                   KOKKOS_LAMBDA(int i, int j, int &localCount) {
-                     if (!isApproxGPU(SpecVolDisplaced(i, j), TeosExpValue, RTol)) {
+                     if (!isApprox(SpecVolDisplaced(i, j), TeosExpValue, RTol)) {
                         localCount++;
                      }
                   },
@@ -369,7 +367,11 @@ int main(int argc, char *argv[]) {
 
    MPI_Init(&argc, &argv);
    Kokkos::initialize(argc, argv);
-   { RetVal += eosTest(); }
+   Pacer::initialize(MPI_COMM_WORLD);
+   Pacer::setPrefix("Omega:");
+
+   RetVal += eosTest();
+
    Eos::destroyInstance();
    Kokkos::finalize();
    MPI_Finalize();
