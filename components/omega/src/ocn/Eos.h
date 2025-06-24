@@ -66,7 +66,7 @@ class Eos {
                            I4 KDisp);
 
    /// Initialize EOS from config and mesh
-   static I4 init();
+   static void init();
 
  private:
    /// Private constructor

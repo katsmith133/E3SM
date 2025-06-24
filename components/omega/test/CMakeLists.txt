@@ -432,10 +432,11 @@ add_omega_test(
     testTriDiagSolvers.exe
     base/TriDiagSolversTest.cpp
     "-n;1"
+) 
+
 ##################
 # EOS tests
 ##################
-
 add_test(NAME GSWC_CALL_TEST
     COMMAND ${OMEGA_BUILD_DIR}/external/GSW-C/gsw_check
 )

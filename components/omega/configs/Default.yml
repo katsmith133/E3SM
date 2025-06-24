@@ -47,7 +47,7 @@ Omega:
     Linear:
       DRhoDT: -0.2
       DRhoDS: 0.8
-      RhoT0S0 : 1000.0
+      RhoT0S0: 1000.0
   IOStreams:
     # InitialState should only be used when starting from scratch.
     # For restart runs, the frequency units should be changed from

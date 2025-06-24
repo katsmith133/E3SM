@@ -65,11 +65,7 @@ I4 initEosTest(const std::string &mesh) {
 
    /// Open and read config file
    Config("Omega");
-   Err = Config::readAll("omega.yml");
-   if (Err != 0) {
-      LOG_ERROR("EosTest: Error reading config file");
-      return Err;
-   }
+   Config::readAll("omega.yml");
 
    /// Initialize parallel IO
    int IOErr = IO::init(DefComm);
@@ -79,25 +75,18 @@ I4 initEosTest(const std::string &mesh) {
    }
 
    /// Initialize decomposition
-   int DecompErr = Decomp::init(mesh);
-   if (DecompErr != 0) {
-      Err++;
-      LOG_ERROR("EosTest: error initializing default decomposition");
-   }
+   Decomp::init(mesh);
 
    /// Initialize mesh
-   int MeshErr = HorzMesh::init();
-   if (MeshErr != 0) {
-      Err++;
-      LOG_ERROR("EosTest: error initializing default mesh");
-   }
+   HorzMesh::init();
+
+   /// Create vertical dimension for test arrays
+   const auto &Mesh = HorzMesh::getDefault();
+   std::shared_ptr<Dimension> VertDim =
+       Dimension::create("NVertLevels", NVertLevels);
 
    /// Initialize Eos
-   int EosErr = Eos::init();
-   if (EosErr != 0) {
-      Err++;
-      LOG_ERROR("EosTest: error initializing default Eos");
-   }
+   Eos::init();
 
    /// Retrieve Eos
    Eos *DefEos = Eos::getInstance();
@@ -108,11 +97,6 @@ I4 initEosTest(const std::string &mesh) {
       LOG_INFO("EosTest: Eos retrieval FAIL");
       return -1;
    }
-
-   /// Create vertical dimension for test arrays
-   const auto &Mesh = HorzMesh::getDefault();
-   std::shared_ptr<Dimension> VertDim =
-       Dimension::create("NVertLevels", NVertLevels);
        
    return Err;
 }

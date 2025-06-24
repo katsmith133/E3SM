@@ -55,10 +55,9 @@ void Eos::destroyInstance() {
 /// it ASSUMES that HorzMesh was initialized and initializes the Eos class by
 /// using the default mesh, reading the config file, and setting parameters
 /// for either a Linear or TEOS-10 equation.
-/// Returns 0 on success, or an error code if any required option is missing.
-int Eos::init() {
+void Eos::init() {
 
-   int Err               = 0;
+   Error Err; // error code
    HorzMesh *DefHorzMesh = HorzMesh::getDefault();
    I4 NVertLevels        = DefHorzMesh->NVertLevels;
 
@@ -68,54 +67,37 @@ int Eos::init() {
    /// Get EosConfig group from Omega config
    Config *OmegaConfig = Config::getOmegaConfig();
    Config EosConfig("Eos");
-   Err = OmegaConfig->get(EosConfig);
-   if (Err != 0) {
-      LOG_CRITICAL("Eos::init: Eos group not found in Config");
-      return Err;
-   }
+   Err += OmegaConfig->get(EosConfig);
+   CHECK_ERROR_ABORT(Err, "Eos::init: Eos group not found in Config");
 
    /// Get EosType from EosConfig
    /// and set the EosChoice accordingly
    std::string EosTypeStr;
-   Err = EosConfig.get("EosType", EosTypeStr);
-   if (Err != 0) {
-      LOG_CRITICAL("Eos::init: EosType subgroup not found in EosConfig");
-      return Err;
-   }
+   Err += EosConfig.get("EosType", EosTypeStr);
+   CHECK_ERROR_ABORT(Err, "Eos::init: EosType subgroup not found in EosConfig");
 
    /// Set EosChoice based on EosTypeStr and get parameters
    if (EosTypeStr == "Linear" or EosTypeStr == "linear") {
       Config EosLinConfig("Linear");
-      Err = EosConfig.get(EosLinConfig);
-      if (Err != 0) {
-         LOG_CRITICAL("Eos::init: Linear subgroup not found in EosConfig");
-         return Err;
-      }
+      Err += EosConfig.get(EosLinConfig);
+      CHECK_ERROR_ABORT(Err, "Eos::init: Linear subgroup not found in EosConfig");
+
       eos->EosChoice = EosType::Linear;
-      Err                   = EosLinConfig.get("DRhoDT", eos->DRhodT);
-      if (Err != 0) {
-         LOG_CRITICAL("Eos::init: Parameter Linear:DRhodT not found in EosLinConfig");
-         return Err;
-      }
-      Err = EosLinConfig.get("DRhoDS", eos->DRhodS);
-      if (Err != 0) {
-         LOG_CRITICAL("Eos::init: Parameter Linear:DRhodS not found in EosLinConfig");
-         return Err;
-      }
-      Err = EosLinConfig.get("RhoT0S0", eos->RhoT0S0);
-      if (Err != 0) {
-         LOG_CRITICAL("Eos::init: Parameter Linear:RhoT0S0 not found in EosLinConfig");
-      }
+      Err += EosLinConfig.get("DRhoDT", eos->DRhodT);
+      CHECK_ERROR_ABORT(Err, "Eos::init: Parameter Linear:DRhodT not found in EosLinConfig");
+
+      Err += EosLinConfig.get("DRhoDS", eos->DRhodS);
+      CHECK_ERROR_ABORT(Err, "Eos::init: Parameter Linear:DRhodS not found in EosLinConfig");
+
+      Err += EosLinConfig.get("RhoT0S0", eos->RhoT0S0);
+      CHECK_ERROR_ABORT(Err, "Eos::init: Parameter Linear:RhoT0S0 not found in EosLinConfig");
+
    } else if ((EosTypeStr == "teos10") or (EosTypeStr == "teos-10") or
               (EosTypeStr == "TEOS-10")) {
       eos->EosChoice = EosType::Teos10Poly75t;
    } else {
-      LOG_CRITICAL("Eos::init: Unknown EosType requested");
-      Err = -1;
-      return Err;
+      LOG_ERROR("Eos::init: Unknown EosType requested");
    }
-
-   return Err;
 } // end init
 
 /// Compute specific volume for all cells/levels (no displacement)
@@ -190,7 +172,7 @@ void Eos::computeSpecVolDisp(const Array2DReal &ConservTemp,
 /// Define IO fields and metadata for output
 void Eos::defineFields() {
 
-   int Err = 0;
+   I4 Err = 0;
 
    /// Set field names (append Name if not default)
    SpecVolFldName          = "SpecVol";
