@@ -3393,6 +3393,13 @@
       <desc>WW3 unstructured QU 225km global grid with EC30to60E2r2 coastlines</desc>
     </domain>
 
+    <domain name="wQU225Icos30E3r5">
+      <nx>97988</nx>
+      <ny>1</ny>
+      <file grid="wav">$DIN_LOC_ROOT/share/domains/domain.ocn.wQU225Icos30E3r5.240910.nc</file>
+      <desc>WW3 unstructured QU 225km global grid with ICOS30 coastlines</desc>
+    </domain>
+
     <!-- RRM grids -->
 
     <domain name="ne0np4_arm_x8v3_lowcon">

@@ -198,6 +198,8 @@
       use shr_nl_mod       , only : shr_nl_find_group_name
       use shr_mpi_mod      , only : shr_mpi_bcast
 
+      use shr_const_mod    , only : shr_const_rhofw
+
 !
       implicit none
 !
@@ -854,29 +856,6 @@ CONTAINS
 
       ! add call to gptl timer
 
-      ! send initial state to driver
-      do jsea=1, nseal
-         w2x_w%rattr(index_w2x_Sw_ustokes_wavenumber_1,jsea) = 0.0
-         w2x_w%rattr(index_w2x_Sw_vstokes_wavenumber_1,jsea) = 0.0
-
-         w2x_w%rattr(index_w2x_Sw_ustokes_wavenumber_2,jsea) = 0.0
-         w2x_w%rattr(index_w2x_Sw_vstokes_wavenumber_2,jsea) = 0.0
-
-         w2x_w%rattr(index_w2x_Sw_ustokes_wavenumber_3,jsea) = 0.0
-         w2x_w%rattr(index_w2x_Sw_vstokes_wavenumber_3,jsea) = 0.0
-
-         w2x_w%rattr(index_w2x_Sw_ustokes_wavenumber_4,jsea) = 0.0
-         w2x_w%rattr(index_w2x_Sw_vstokes_wavenumber_4,jsea) = 0.0
-
-         w2x_w%rattr(index_w2x_Sw_ustokes_wavenumber_5,jsea) = 0.0
-         w2x_w%rattr(index_w2x_Sw_vstokes_wavenumber_5,jsea) = 0.0
-
-         w2x_w%rattr(index_w2x_Sw_ustokes_wavenumber_6,jsea) = 0.0
-         w2x_w%rattr(index_w2x_Sw_vstokes_wavenumber_6,jsea) = 0.0
-      enddo
-
-      ! end redirection of share output to wav log
-
       if ( iaproc .eq. napout ) then
         call shr_sys_flush(ndso)
       endif
@@ -1205,20 +1184,22 @@ CONTAINS
          IX  = MAPSF(ISEA,1)
          IY  = MAPSF(ISEA,2)
          if (MAPSTA(IY,IX) .eq. 1) then
-            if (wav_ocn_coup .eq. 'twoway' .or. wav_atm_coup .eq. 'twoway') then
-              w2x_w%rattr(index_w2x_Sw_Charn,jsea) = CHARN(jsea)
-              w2x_w%rattr(index_w2x_Sw_Ustar,jsea) = USTAR2(jsea) ! Friction velocity
-              w2x_w%rattr(index_w2x_Sw_Z0,jsea) = Z0(jsea) ! Z0 surface roughness length
+             if (wav_ocn_coup .eq. 'twoway' .or. wav_atm_coup .eq. 'twoway') then
+               w2x_w%rattr(index_w2x_Sw_Charn,jsea) = CHARN(jsea)
+               w2x_w%rattr(index_w2x_Sw_Ustar,jsea) = USTAR2(jsea) ! Friction velocity
+               w2x_w%rattr(index_w2x_Sw_Z0,jsea) = Z0(jsea) ! Z0 surface roughness length
             endif
             if (wav_ocn_coup .eq. 'twoway') then
                w2x_w%rattr(index_w2x_Sw_Hs,jsea) = HS(jsea)
                w2x_w%rattr(index_w2x_Sw_Fp,jsea) = FP0(jsea)
                w2x_w%rattr(index_w2x_Sw_Dp,jsea) = THP0(jsea)
 
-               w2x_w%rattr(index_w2x_Faww_Tawx,jsea) = 1000*TAUWIX(jsea) !Conversion to N m^{-2} by multiplying by density of water (See eqn 2.99 WW3 Manual)
-               w2x_w%rattr(index_w2x_Faww_Tawy,jsea) = 1000*TAUWIY(jsea)
-               w2x_w%rattr(index_w2x_Fwow_Twox,jsea) = 1000*TAUOX(jsea)
-               w2x_w%rattr(index_w2x_Fwow_Twoy,jsea) = 1000*TAUOY(jsea)
+               ! Conversion to N m^{-2} by multiplying by density of water (See eqn 2.99 WW3 Manual)
+               ! N.B. WW3 makes a freshwater assumption rather than using the density of sea water.
+               w2x_w%rattr(index_w2x_Faww_Tawx,jsea) = shr_const_rhofw*TAUWIX(jsea) 
+               w2x_w%rattr(index_w2x_Faww_Tawy,jsea) = shr_const_rhofw*TAUWIY(jsea)
+               w2x_w%rattr(index_w2x_Fwow_Twox,jsea) = shr_const_rhofw*TAUOX(jsea)
+               w2x_w%rattr(index_w2x_Fwow_Twoy,jsea) = shr_const_rhofw*TAUOY(jsea)
                w2x_w%rattr(index_w2x_Faow_Tocx,jsea) = TAUOCX(jsea)
                w2x_w%rattr(index_w2x_Faow_Tocy,jsea) = TAUOCY(jsea)
 
@@ -1239,7 +1220,7 @@ CONTAINS
                w2x_w%rattr(index_w2x_Sw_ustokes_wavenumber_6,jsea) = USSP(jsea,6)
                w2x_w%rattr(index_w2x_Sw_vstokes_wavenumber_6,jsea) = USSP(jsea,nk+6)
             endif
-        else
+         else
             if (wav_ocn_coup .eq. 'twoway' .or. wav_atm_coup .eq. 'twoway') then
                w2x_w%rattr(index_w2x_Sw_Charn,jsea) = 0.0
                w2x_w%rattr(index_w2x_Sw_Ustar,jsea) = 0.0
@@ -1249,7 +1230,7 @@ CONTAINS
                w2x_w%rattr(index_w2x_Sw_Hs,jsea) = 0.0
                w2x_w%rattr(index_w2x_Sw_Fp,jsea) = 0.0
                w2x_w%rattr(index_w2x_Sw_Dp,jsea) = 0.0
-
+               
                w2x_w%rattr(index_w2x_Faww_Tawx,jsea) = 0.0
                w2x_w%rattr(index_w2x_Faww_Tawy,jsea) = 0.0
                w2x_w%rattr(index_w2x_Fwow_Twox,jsea) = 0.0

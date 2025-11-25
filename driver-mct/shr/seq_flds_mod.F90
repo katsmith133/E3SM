@@ -1700,7 +1700,7 @@ contains
     ! Sea surface temperature
     call seq_flds_add(o2x_states,"So_t")
     call seq_flds_add(x2i_states,"So_t")
-    call seq_flds_add(x2w_states,"So_t")
+    if (wav_ocn_coup .ne. 'none') call seq_flds_add(x2w_states,"So_t")
 
     ! Sea surface  salinity
     call seq_flds_add(o2x_states,"So_s")
@@ -1714,7 +1714,7 @@ contains
     ! Zonal sea water velocity
     call seq_flds_add(o2x_states,"So_u")
     call seq_flds_add(x2i_states,"So_u")
-    call seq_flds_add(x2w_states,"So_u")
+    if (wav_ocn_coup .ne. 'none') call seq_flds_add(x2w_states,"So_u")
     longname = 'Zonal sea water velocity'
     stdname  = 'eastward_sea_water_velocity'
     units    = 'm s-1'
@@ -1724,7 +1724,7 @@ contains
     ! Meridional sea water velocity
     call seq_flds_add(o2x_states,"So_v")
     call seq_flds_add(x2i_states,"So_v")
-    call seq_flds_add(x2w_states,"So_v")
+    if (wav_ocn_coup .ne. 'none') call seq_flds_add(x2w_states,"So_v")
     longname = 'Meridional sea water velocity'
     stdname  = 'northward_sea_water_velocity'
     units    = 'm s-1'
@@ -1743,7 +1743,7 @@ contains
     call seq_flds_add(o2x_states,"So_ssh")
     call seq_flds_add(x2r_states,"So_ssh")
     call seq_flds_add(o2x_states_to_rof,"So_ssh")
-    call seq_flds_add(x2w_states,'So_ssh')
+    if (wav_ocn_coup .ne. 'none') call seq_flds_add(x2w_states,'So_ssh')
     longname = 'Sea surface height'
     stdname  = 'sea_surface_height'
     units    = 'm'
@@ -1761,7 +1761,7 @@ contains
 
     ! Boundary Layer Depth
     call seq_flds_add(o2x_states,"So_bldepth")
-    call seq_flds_add(x2w_states,"So_bldepth")
+    if (wav_ocn_coup .ne. 'none') call seq_flds_add(x2w_states,"So_bldepth")
     longname = 'Ocean Boundary Layer Depth'
     stdname  = 'ocean_boundary_layer_depth'
     units    = 'm'

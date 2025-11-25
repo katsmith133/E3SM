@@ -139,7 +139,7 @@ end subroutine shr_flux_adjust_constants
 !     2019-May-16 - Jack Reeves Eyre (UA) and Kai Zhang (PNNL) - Added COARE/Fairall surface flux scheme option (ocn_surface_flux_scheme .eq. 1) based on code from Thomas Toniazzo (Bjerknes Centre, Bergen) ”
 !
 !     2024-Jul - E. Thomas ethomas@lanl.gov - implementing Coare3.0 w/ Wave coupling
-!     2025-Mar - E. Thomas ethomas@lanl.gov - implementing Large+Yeager(default) Flux shceme w/ Wave coupling
+!     2025-Mar - E. Thomas ethomas@lanl.gov - implementing Large+Yeager(default) Flux scheme w/ Wave coupling
 ! !INTERFACE: ------------------------------------------------------------------
 
 SUBROUTINE shr_flux_atmOcn(nMax  ,zbot  ,ubot  ,vbot  ,thbot ,   &
@@ -224,6 +224,7 @@ SUBROUTINE shr_flux_atmOcn(nMax  ,zbot  ,ubot  ,vbot  ,thbot ,   &
 !!++ COARE only
    real(R8),parameter :: zpbl =700.0_R8 ! PBL depth [m] for gustiness parametriz.
 
+   real(R8),parameter :: tiny = 1.0e-12_R8
    !--- local variables --------------------------------
    integer(IN) :: n      ! vector loop index
    integer(IN) :: iter
@@ -261,7 +262,7 @@ SUBROUTINE shr_flux_atmOcn(nMax  ,zbot  ,ubot  ,vbot  ,thbot ,   &
    real(R8)    :: tau_diff ! difference in tau across iterations (Pa)
    real(R8)    :: prev_tau_diff ! previous value of tau_diff (Pa)
    real(R8)    :: wind_adj ! iteration-adjusted wind speed (m/s)
-!!++ Large with waves
+!!++ Large and Yeager with waves
    real(R8)    :: cdn_wav
 !!++ COARE only
    real(R8)    :: zo,zot,zoq      ! roughness lengths
@@ -371,8 +372,9 @@ SUBROUTINE shr_flux_atmOcn(nMax  ,zbot  ,ubot  ,vbot  ,thbot ,   &
         !--- neutral coefficients, z/L = 0.0 ---
         stable = 0.5_R8 + sign(0.5_R8 , delt)
         if (wav_atm_coup .eq. 'twoway') then
-           if (z0wav(n) == 0.0_R8 ) then 
-              cdn_wav = cdn_wave(loc_karman,zref,0.0001_R8)
+           if (z0wav(n) .lt. tiny) then 
+              ! z0wav == 0 for cold-start-WW3 situations   
+              cdn_wav = cdn_wave(loc_karman,zref,tiny)
            else
               cdn_wav = cdn_wave(loc_karman,zref,z0wav(n))
            endif
@@ -387,8 +389,8 @@ SUBROUTINE shr_flux_atmOcn(nMax  ,zbot  ,ubot  ,vbot  ,thbot ,   &
 
         !--- ustar, tstar, qstar ---
         if (wav_atm_coup .eq. 'twoway') then
-           if (ustarwav(n) == 0.0_R8 ) then 
-              ustar = ustarwav(n)+0.01_R8
+           if (ustarwav(n) .lt. tiny) then 
+              ustar = ustarwav(n)+tiny 
            else
               ustar = ustarwav(n)
            endif
@@ -1168,7 +1170,7 @@ function cdn_wave(kappa,zr,z0) result(cdn_wav)
        implicit none
 
        ! input variables
-       real(R8), intent(in) :: kappa !von Karmen constant
+       real(R8), intent(in) :: kappa ! von Karman constant
        real(R8), intent(in) :: zr ! reference height (10m)
        real(R8), intent(in) :: z0 ! roughness length based on wave state
 
@@ -1176,9 +1178,13 @@ function cdn_wave(kappa,zr,z0) result(cdn_wav)
        real(R8) :: a, b 
        real(R8) :: cdn_wav
 
-       a = zr / z0 
-       b = log(a)
-       cdn_wav = (kappa**2) / (b**2)  
+       if (zr .gt. z0) then               
+          a = zr / z0 
+          b = log(a)
+          cdn_wav = (kappa**2) / (b**2)  
+       else
+          call shr_sys_abort(" CDN_Wave Error: Roughness length is greater than reference height (10m). Solution Not Realistic.")
+       endif
 end function cdn_wave
 
 !===============================================================================

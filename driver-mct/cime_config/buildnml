@@ -88,9 +88,6 @@ def _create_drv_namelists(case, infile, confdir, nmlgen, files):
         config['WAVSPEC'] = 'none'
 
     #----------------------------------------------------
-   #----------------------------------------------------
-
-    #----------------------------------------------------
     # Initialize namelist defaults
     #----------------------------------------------------
     nmlgen.init_defaults(infile, config)
