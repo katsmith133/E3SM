@@ -74,7 +74,11 @@ def _create_drv_namelists(case, infile, confdir, nmlgen, files):
     # ---------------------------------------------------
     if case.get_value('COMP_WAV') == 'ww3':
         config['WAVSPEC'] = case.get_value('WAV_SPEC')
-        config['WAV_ATM_COUP'] = 'twoway' if case.get_value('COMP_ATM') == 'eam' else 'oneway'
+        if case.get_value('COMP_ATM') == 'eam':
+            config['WAV_ATM_COUP'] = 'twoway'
+        else:
+            config['WAV_ATM_COUP'] = 'oneway'
+            
         if case.get_value('COMP_OCN') == 'mpaso':
             config['WAV_OCN_COUP'] = 'twoway'
             config['ocn_surface_flux_scheme'] = 0
