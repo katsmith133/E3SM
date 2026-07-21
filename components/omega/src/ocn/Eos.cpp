@@ -354,6 +354,57 @@ Real Eos::calcCtFromPt(const Real &Sa, const Real &Pt) const {
    return Pt;
 }
 
+Real Eos::calcPotEnthalpyIceFromPotTempIce(const Real &PotTempIce) const {
+   if (EosChoice == EosType::Teos10Eos) {
+      return ComputeSpecVolTeos10.calcPotEnthalpyIceFromPotTempIce(PotTempIce);
+   }
+
+   return 0.0_Real;
+}
+
+void Eos::calcFrazilProperties(const Real &BulkAbsSalinity,
+                               const Real &BulkPotEnthalpy,
+                               const Real &Pressure,
+                               Real &InterstitialAbsSalinity,
+                               Real &InterstitialConservTemp,
+                               Real &IceMassFraction) const {
+   if (EosChoice == EosType::Teos10Eos) {
+      ComputeSpecVolTeos10.calcFrazilProperties(
+          BulkAbsSalinity, BulkPotEnthalpy, Pressure, InterstitialAbsSalinity,
+          InterstitialConservTemp, IceMassFraction);
+   }
+}
+
+void Eos::calcMeltingIceIntoSeawater(
+    const Real &AbsSalinity, const Real &ConservTemp, const Real &Pressure,
+    const Real &IceMassFractionInput, const Real &IceTemperature,
+    Real &AbsSalinityFinal, Real &ConservTempFinal,
+    Real &IceMassFractionFinal) const {
+   if (EosChoice == EosType::Teos10Eos) {
+      ComputeSpecVolTeos10.calcMeltingIceIntoSeawater(
+          AbsSalinity, ConservTemp, Pressure, IceMassFractionInput,
+          IceTemperature, AbsSalinityFinal, ConservTempFinal,
+          IceMassFractionFinal);
+   }
+}
+
+Real Eos::calcPotTempIceFromPotEnthalpyIce(const Real PotEnthalpyIce) const {
+   if (EosChoice == EosType::Teos10Eos) {
+      ComputeSpecVolTeos10.calcPotTempIceFromPotEnthalpyIce(PotEnthalpyIce);
+   }
+   return PotEnthalpyIce;
+}
+
+Real Eos::calcISTempFromPotTempIce(const Real &PotTempIce,
+                                   const Real &Pressure) const {
+   if (EosChoice == EosType::Teos10Eos) {
+      return ComputeSpecVolTeos10.calcISTempFromPotTempIce(PotTempIce,
+                                                           Pressure);
+   }
+
+   return 0.0_Real;
+}
+
 /// Define IO fields and metadata for output
 void Eos::defineFields() {
 

@@ -49,6 +49,10 @@ constexpr Real REarth = pcd::mean_radius; // Mean radius of the Earth ~ m (from
 constexpr Real TkTrip =
     pcd::water_triple_point_temperature; // Triple point of fresh water ~ K
                                          // (from Physical Constants Dictionary)
+constexpr Real PTrip =
+    pcd::water_triple_point_pressure; // Triple point of fresh water ~
+                                      // Pa (from Physical Constants
+                                      // Dictionary)
 constexpr Real TkFrz = pcd::pure_water_freezing_temperature_reference;
 // Freezing point of fresh water ~ K (from Physical Constants Dictionary)
 constexpr Real TkFrzSw = TkFrz - 1.8; // Freezing point of seawater ~ K

@@ -240,6 +240,7 @@ class Teos10Eos {
    }
 
    /// Calculate 2nd derivative of Gibbs wrt pot temp at ref P for TEOS-10
+   /// GSW Toolbox function gsw_gibbs_pt0_pt0
    KOKKOS_FUNCTION Real calcGibbsDerivPt0Pt0(Real Sa, Real P) const {
       Real x2 = Sfac * Sa;
       Real x  = Kokkos::sqrt(x2);
@@ -268,6 +269,7 @@ class Teos10Eos {
    }
 
    /// Calculate Pot Temmperature from Conservative Temp
+   /// GSW Toolbox function gsw_pt_from_ct
    KOKKOS_FUNCTION Real calcPtFromCt(Real Sa, Real Ct) const {
       constexpr Real a0 = -1.446013646344788e-2;
       constexpr Real a1 = -3.305308995852924e-3;
@@ -307,7 +309,8 @@ class Teos10Eos {
       return (pt_old - ct_diff * dpt_dct);
    }
 
-   /// Calculate Conservative Temmperature from Potential Temp
+   /// Calculate Conservative Temperature from Potential Temp
+   /// GSW Toolbox function gsw_ct_from_pt
    KOKKOS_FUNCTION Real calcCtFromPt(Real Sa, Real Pt) const {
       Real x2, x, y, pot_enthalpy;
 
@@ -354,9 +357,9 @@ class Teos10Eos {
 
    /// Calculates freezing Conservative Temperature using TEOS-10 polynomial
    /// (polynomial error in [-5e-4, 6e-4] K, from GSW package)
+   /// GSW Toolbox function gsw_ct_freezing_poly
    KOKKOS_FUNCTION Real calcCtFreezing(const Real Sa, const Real P,
                                        const Real SaturationFract) const {
-      constexpr Real Sso = 35.16504;
       constexpr Real C0  = 0.017947064327968736;
       constexpr Real C1  = -6.076099099929818;
       constexpr Real C2  = 4.883198653547851;
@@ -381,7 +384,7 @@ class Teos10Eos {
       constexpr Real C21 = 0.1338002171109174;
       constexpr Real C22 = 1.242891021876471;
 
-      // Note: a = 0.502500117621 / Sso
+      // Note: a = 0.502500117621 / SS0
       constexpr Real A = 0.014289763856964;
       constexpr Real B = 0.057000649899720;
 
@@ -400,14 +403,815 @@ class Teos10Eos {
 
       /* Adjust for the effects of dissolved air */
       CtFreez = CtFreez - SaturationFract * (1e-3) * (2.4 - A * Sa) *
-                              (1.0 + B * (1.0 - Sa / Sso));
+                              (1.0 + B * (1.0 - Sa / SS0));
 
       return CtFreez;
+   }
+
+   /// Calculates the in-situ temperature at which seawater freezes
+   /// GSW Toolbox function gsw_t_freezing_poly
+   KOKKOS_FUNCTION Real calcISTempFreezing(const Real Salinity,
+                                           const Real Pressure,
+                                           const Real SaturationFract) const {
+
+      constexpr Real T0  = 0.002519;
+      constexpr Real T1  = -5.946302841607319;
+      constexpr Real T2  = 4.136051661346983;
+      constexpr Real T3  = -1.115150523403847e1;
+      constexpr Real T4  = 1.476878746184548e1;
+      constexpr Real T5  = -1.088873263630961e1;
+      constexpr Real T6  = 2.961018839640730;
+      constexpr Real T7  = -7.433320943962606;
+      constexpr Real T8  = -1.561578562479883;
+      constexpr Real T9  = 4.073774363480365e-2;
+      constexpr Real T10 = 1.158414435887717e-2;
+      constexpr Real T11 = -4.122639292422863e-1;
+      constexpr Real T12 = -1.123186915628260e-1;
+      constexpr Real T13 = 5.715012685553502e-1;
+      constexpr Real T14 = 2.021682115652684e-1;
+      constexpr Real T15 = 4.140574258089767e-2;
+      constexpr Real T16 = -6.034228641903586e-1;
+      constexpr Real T17 = -1.205825928146808e-2;
+      constexpr Real T18 = -2.812172968619369e-1;
+      constexpr Real T19 = 1.877244474023750e-2;
+      constexpr Real T20 = -1.204395563789007e-1;
+      constexpr Real T21 = 2.349147739749606e-1;
+      constexpr Real T22 = 2.748444541144219e-3;
+
+      const Real SaR = Salinity * 1.0e-2;
+      const Real X   = Kokkos::sqrt(SaR);
+      const Real Pr  = Pressure * 1.0e-4;
+
+      Real TFreez =
+          T0 + SaR * (T1 + X * (T2 + X * (T3 + X * (T4 + X * (T5 + T6 * X))))) +
+          Pr * (T7 + Pr * (T8 + T9 * Pr)) +
+          SaR * Pr * (T10 + Pr * (T12 + Pr * (T15 + T21 * SaR))) +
+          SaR * (T13 + T17 * Pr + T19 * SaR) +
+          X * (T11 + Pr * (T14 + T18 * Pr) +
+               SaR * (T16 + T20 * Pr + T22 * SaR));
+
+      TFreez = TFreez - SaturationFract * 1e-3_Real *
+                            (2.4_Real - Salinity / (2.0_Real * SS0));
+
+      return TFreez;
+   }
+
+   /// Calculates potential enthalpy of ice from potential temperature of ice
+   /// using TEOS-10 polynomial The error of this fit ranges between -6e-3 and
+   /// 6e-3 J/kg over the potential temperature range of -100 to 2 degC GSW
+   /// Toolbox function gsw_pot_enthalpy_from_pt_ice_poly
+   KOKKOS_FUNCTION Real
+   calcPotEnthalpyIceFromPotTempIce(const Real PotTempIce) const {
+      constexpr Real P0 = -3.333601570157700e5;
+      constexpr Real P1 = 2.096693916810367e3;
+      constexpr Real P2 = 3.687110754043292;
+      constexpr Real P3 = 4.559401565980682e-4;
+      constexpr Real P4 = -2.516011957758120e-6;
+      constexpr Real P5 = -1.040364574632784e-8;
+      constexpr Real P6 = -1.701786588412454e-10;
+      constexpr Real P7 = -7.667191301635057e-13;
+
+      // Initial estimate of the potential enthalpy
+      Real PotEnthalpyIce =
+          P0 +
+          PotTempIce *
+              (P1 +
+               PotTempIce *
+                   (P2 +
+                    PotTempIce *
+                        (P3 +
+                         PotTempIce *
+                             (P4 + PotTempIce *
+                                       (P5 + PotTempIce *
+                                                 (P6 + P7 * PotTempIce))))));
+
+      Real DPotTempDPotEnth =
+          calcPotTempIceFromPotEnthalpyIceDeriv(PotEnthalpyIce);
+
+      Real PotEnthalpyIceOld, PotEnthalpyIceMid, F;
+
+      for (int I = 0; I < 5; ++I) {
+         PotEnthalpyIceOld = PotEnthalpyIce;
+         F = calcPotTempIceFromPotEnthalpyIce(PotEnthalpyIceOld) - PotTempIce;
+         PotEnthalpyIce    = PotEnthalpyIceOld - F / DPotTempDPotEnth;
+         PotEnthalpyIceMid = 0.5_Real * (PotEnthalpyIce + PotEnthalpyIceOld);
+         DPotTempDPotEnth =
+             calcPotTempIceFromPotEnthalpyIceDeriv(PotEnthalpyIceMid);
+         PotEnthalpyIce = PotEnthalpyIceOld - F / DPotTempDPotEnth;
+      }
+
+      return PotEnthalpyIce;
+   }
+
+   /// Calculate potential temperature of ice from the potential enthalpy of ice
+   /// The error of this fit ranges between -5e-5 and 2e-4 degC over the
+   /// potential temperature range of -100 to 2 degC. GSW Toolbox function
+   /// gsw_pt_from_pot_enthalpy_ice_poly
+   KOKKOS_FUNCTION Real
+   calcPotTempIceFromPotEnthalpyIce(const Real PotEnthalpyIce) const {
+      constexpr Real Q0 = 2.533588268773218e2;
+      constexpr Real Q1 = 2.594351081876611e-3;
+      constexpr Real Q2 = 1.765077810213815e-8;
+      constexpr Real Q3 = 7.768070564290540e-14;
+      constexpr Real Q4 = 2.034842254277530e-19;
+      constexpr Real Q5 = 3.220014531712841e-25;
+      constexpr Real Q6 = 2.845172809636068e-31;
+      constexpr Real Q7 = 1.094005878892950e-37;
+
+      Real IcePotTemp =
+          Q0 +
+          PotEnthalpyIce *
+              (Q1 +
+               PotEnthalpyIce *
+                   (Q2 +
+                    PotEnthalpyIce *
+                        (Q3 +
+                         PotEnthalpyIce *
+                             (Q4 +
+                              PotEnthalpyIce *
+                                  (Q5 + PotEnthalpyIce *
+                                            (Q6 + Q7 * PotEnthalpyIce))))));
+
+      return IcePotTemp;
+   }
+
+   /// Calculate the derivative of potential temperature of ice with respect to
+   /// potential enthalpy of ice GSW Toolbox function
+   /// gsw_pt_from_pot_enthalpy_ice_poly_derivatives
+   KOKKOS_FUNCTION Real
+   calcPotTempIceFromPotEnthalpyIceDeriv(const Real PotEnthalpyIce) const {
+      constexpr Real Q1 = 2.594351081876611e-3;
+      constexpr Real P2 = 3.530155620427630e-8;
+      constexpr Real P3 = 2.330421169287162e-13;
+      constexpr Real P4 = 8.139369017110120e-19;
+      constexpr Real P5 = 1.610007265856420e-24;
+      constexpr Real P6 = 1.707103685781641e-30;
+      constexpr Real P7 = 7.658041152250651e-37;
+
+      Real DPotTempDPotEnth =
+          Q1 +
+          PotEnthalpyIce *
+              (P2 +
+               PotEnthalpyIce *
+                   (P3 + PotEnthalpyIce *
+                             (P4 + PotEnthalpyIce *
+                                       (P5 + PotEnthalpyIce *
+                                                 (P6 + P7 * PotEnthalpyIce)))));
+
+      return DPotTempDPotEnth;
+   }
+
+   /// Calculate the mass fraction of ice (mass of ice divided by mass of ice
+   /// plus seawater), which results from given values of the bulk absolute
+   /// salinity, bulk potential enthalpy, and pressure. The final equalibrium
+   /// values of absolute salinity and conservative temperature of the
+   /// interstitial seawater phase are also returned. This code assumes there is
+   /// no dissolved air in the seawater. When the mass fraction is positive, the
+   /// seawater-ice mixture is at thermodynamic equilibrium. It also returns 0
+   /// for the mass fraction if the input bulk enthalpy is sufficiently large,
+   /// meaning there is no ice present in the final state. GSW Toolbox function
+   /// gsw_frazil_properties_potential_poly
+   KOKKOS_FUNCTION void calcFrazilProperties(const Real BulkAbsSalinity,
+                                             const Real BulkPotEnthalpy,
+                                             const Real Pressure,
+                                             Real &InterstitialAbsSalinity,
+                                             Real &InterstitialConservTemp,
+                                             Real &IceMassFraction) const {
+
+      constexpr Real F01 = -9.041191886754806e-1;
+      constexpr Real F02 = 4.169608567309818e-2;
+      constexpr Real F03 = -9.325971761333677e-3;
+      constexpr Real F04 = 4.699055851002199e-2;
+      constexpr Real F05 = -3.086923404061666e-2;
+      constexpr Real F06 = 1.057761186019000e-2;
+      constexpr Real F07 = -7.349302346007727e-2;
+      constexpr Real F08 = 1.444842576424337e-1;
+      constexpr Real F09 = -1.408425967872030e-1;
+      constexpr Real F10 = 1.070981398567760e-1;
+      constexpr Real F11 = -1.768451760854797e-2;
+      constexpr Real F12 = -4.013688314067293e-1;
+      constexpr Real F13 = 7.209753205388577e-1;
+      constexpr Real F14 = -1.807444462285120e-1;
+      constexpr Real F15 = 1.362305015808993e-1;
+      constexpr Real F16 = -9.500974920072897e-1;
+      constexpr Real F17 = 1.192134856624248;
+      constexpr Real F18 = -9.191161283559850e-2;
+      constexpr Real F19 = -1.008594411490973;
+      constexpr Real F20 = 8.020279271484482e-1;
+      constexpr Real F21 = -3.930534388853466e-1;
+      constexpr Real F22 = -2.026853316399942e-2;
+      constexpr Real F23 = -2.722731069001690e-2;
+      constexpr Real F24 = 5.032098120548072e-2;
+      constexpr Real F25 = -2.354888890484222e-2;
+      constexpr Real F26 = -2.454090179215001e-2;
+      constexpr Real F27 = 4.125987229048937e-2;
+      constexpr Real F28 = -3.533404753585094e-2;
+      constexpr Real F29 = 3.766063025852511e-2;
+      constexpr Real F30 = -3.358409746243470e-2;
+      constexpr Real F31 = -2.242158862056258e-2;
+      constexpr Real F32 = 2.102254738058931e-2;
+      constexpr Real F33 = -3.048635435546108e-2;
+      constexpr Real F34 = -1.996293091714222e-2;
+      constexpr Real F35 = 2.577703068234217e-2;
+      constexpr Real F36 = -1.292053030649309e-2;
+
+      constexpr Real G01 = 3.332286683867741e5;
+      constexpr Real G02 = 1.416532517833479e4;
+      constexpr Real G03 = -1.021129089258645e4;
+      constexpr Real G04 = 2.356370992641009e4;
+      constexpr Real G05 = -8.483432350173174e3;
+      constexpr Real G06 = 2.279927781684362e4;
+      constexpr Real G07 = 1.506238790315354e4;
+      constexpr Real G08 = 4.194030718568807e3;
+      constexpr Real G09 = -3.146939594885272e5;
+      constexpr Real G10 = -7.549939721380912e4;
+      constexpr Real G11 = 2.790535212869292e6;
+      constexpr Real G12 = 1.078851928118102e5;
+      constexpr Real G13 = -1.062493860205067e7;
+      constexpr Real G14 = 2.082909703458225e7;
+      constexpr Real G15 = -2.046810820868635e7;
+      constexpr Real G16 = 8.039606992745191e6;
+      constexpr Real G17 = -2.023984705844567e4;
+      constexpr Real G18 = 2.871769638352535e4;
+      constexpr Real G19 = -1.444841553038544e4;
+      constexpr Real G20 = 2.261532522236573e4;
+      constexpr Real G21 = -2.090579366221046e4;
+      constexpr Real G22 = -1.128417003723530e4;
+      constexpr Real G23 = 3.222965226084112e3;
+      constexpr Real G24 = -1.226388046175992e4;
+      constexpr Real G25 = 1.506847628109789e4;
+      constexpr Real G26 = -4.584670946447444e4;
+      constexpr Real G27 = 1.596119496322347e4;
+      constexpr Real G28 = -6.338852410446789e4;
+      constexpr Real G29 = 8.951570926106525e4;
+
+      Real SaturationFract = 0.0_Real;
+      Real DCtDSa, CtFreezing, DFuncDPotEnthalpy, DFuncDPotEnthalpyMeanPoly,
+          DPotEnthDSa;
+      Real Func, Func0, PotEnthalpy, InterstitialAbsSalinityTmp, IceMassFracOld,
+          IceMassFracTmp, X, Xa, Y, Z;
+      I4 Iterations, MaxIterations;
+
+      //  Finding Func0.  This is the value of the function, Func, that would
+      // result in the output IceMassFraction being exactly zero.
+      Func0 =
+          BulkPotEnthalpy -
+          Cp0Sw * calcCtFreezing(BulkAbsSalinity, Pressure, SaturationFract);
+
+      //  Setting the three outputs for data points that have Func0
+      //  non-negative. When Func0 is zero or positive then the final answer
+      //  will contain no frazil ice.
+      if (Func0 >= 0.0_Real) {
+         InterstitialAbsSalinity = BulkAbsSalinity;
+         InterstitialConservTemp = BulkPotEnthalpy / Cp0Sw;
+         IceMassFraction         = 0.0_Real;
+         return;
+      }
+
+      // Begin finding the solution for data points that have Func0 < 0, so that
+      // the output will have a positive ice mass fraction.
+      // Evaluate a polynomial for IceMassFracTmp in terms of BulkAbsSalinity,
+      // Func0, and Pressure.
+      X = BulkAbsSalinity * 1.0e-2;
+      Y = Func0 / 3.0e5;
+      Z = Pressure * 1.0e-4;
+
+      IceMassFracTmp =
+          Y * (F01 + X * (F02 + X * (F03 + X * (F04 + X * (F05 + F06 * X)))) +
+               Y * (F07 + X * (F08 + X * (F09 + X * (F10 + F11 * X))) +
+                    Y * (F12 + X * (F13 + X * (F14 + F15 * X)) +
+                         Y * (F16 + X * (F17 + F18 * X) +
+                              Y * (F19 + F20 * X + F21 * Y)))) +
+               Z * (F22 + X * (F23 + X * (F24 + F25 * X)) +
+                    Y * (X * (F26 + F27 * X) + Y * (F28 + F29 * X + F30 * Y)) +
+                    Z * (F31 + X * (F32 + F33 * X) +
+                         Y * (F34 + F35 * X + F36 * Y))));
+
+      // The ice mass fraction out of this code is restricted to be less than
+      // 0.9.
+      IceMassFracTmp = Kokkos::min(IceMassFracTmp, 0.9_Real);
+
+      // The initial guess at the absolute salinity of the interstitial seawater
+      InterstitialAbsSalinityTmp =
+          BulkAbsSalinity / (1.0_Real - IceMassFracTmp);
+
+      // Doing a Newton step with a separate polynomial estimate of the mean
+      // derivative DFuncDPotEnthalpyMeanPoly.
+      CtFreezing =
+          calcCtFreezing(InterstitialAbsSalinityTmp, Pressure, SaturationFract);
+      PotEnthalpy =
+          calcPotEnthalpyIceFreezing(InterstitialAbsSalinityTmp, Pressure);
+      Func = BulkPotEnthalpy -
+             (1.0_Real - IceMassFracTmp) * Cp0Sw * CtFreezing -
+             IceMassFracTmp * PotEnthalpy;
+
+      Xa = InterstitialAbsSalinityTmp * 1.0e-2;
+
+      DFuncDPotEnthalpyMeanPoly =
+          G01 + Xa * (G02 + Xa * (G03 + Xa * (G04 + G05 * Xa))) +
+          IceMassFracTmp *
+              (Xa * (G06 + Xa * (G07 + G08 * Xa)) +
+               IceMassFracTmp *
+                   (Xa * (G09 + G10 * Xa) +
+                    IceMassFracTmp * Xa *
+                        (G11 + G12 * Xa +
+                         IceMassFracTmp *
+                             (G13 +
+                              IceMassFracTmp *
+                                  (G14 + IceMassFracTmp *
+                                             (G15 + G16 * IceMassFracTmp)))))) +
+          Z * (G17 + Xa * (G18 + G19 * Xa) +
+               IceMassFracTmp *
+                   (G20 + IceMassFracTmp * (G21 + G22 * IceMassFracTmp) +
+                    Xa * (G23 + G24 * Xa * IceMassFracTmp)) +
+               Z * (G25 + Xa * (G26 + G27 * Xa) +
+                    IceMassFracTmp * (G28 + G29 * IceMassFracTmp)));
+
+      IceMassFracOld = IceMassFracTmp;
+      IceMassFracTmp = IceMassFracOld - Func / DFuncDPotEnthalpyMeanPoly;
+      InterstitialAbsSalinityTmp =
+          BulkAbsSalinity / (1.0_Real - IceMassFracTmp);
+
+      // Calculating the estimate of the derivative of Func to be fed into
+      // Newton's Method.
+      CtFreezing =
+          calcCtFreezing(InterstitialAbsSalinityTmp, Pressure, SaturationFract);
+      PotEnthalpy =
+          calcPotEnthalpyIceFreezing(InterstitialAbsSalinityTmp, Pressure);
+
+      DCtDSa = calcConsTempFreezingFirstDerivPoly(InterstitialAbsSalinityTmp,
+                                                  Pressure, SaturationFract);
+      DPotEnthDSa = calcPotEnthalpyIceFirstDerivPoly(InterstitialAbsSalinityTmp,
+                                                     Pressure);
+
+      DFuncDPotEnthalpy =
+          Cp0Sw * CtFreezing - PotEnthalpy -
+          InterstitialAbsSalinityTmp *
+              (Cp0Sw * DCtDSa +
+               IceMassFracTmp * DPotEnthDSa / (1.0_Real - IceMassFracTmp));
+
+      if (IceMassFracTmp >= 0.0_Real && IceMassFracTmp <= 0.2_Real &&
+          InterstitialAbsSalinityTmp > 15.0_Real &&
+          InterstitialAbsSalinityTmp < 60.0_Real && Pressure <= 3000.0_Real) {
+         MaxIterations = 1;
+      } else if (IceMassFracTmp >= 0.0_Real && IceMassFracTmp <= 0.85_Real &&
+                 InterstitialAbsSalinityTmp > 0.0_Real &&
+                 InterstitialAbsSalinityTmp < 120.0_Real &&
+                 Pressure <= 3500.0_Real) {
+         MaxIterations = 2;
+      } else {
+         MaxIterations = 3;
+      }
+
+      for (Iterations = 0; Iterations < MaxIterations; ++Iterations) {
+         if (Iterations > 1) {
+            // On the first iteration CtFreezing and PotEnthalpy are both known
+            CtFreezing  = calcCtFreezing(InterstitialAbsSalinityTmp, Pressure,
+                                         SaturationFract);
+            PotEnthalpy = calcPotEnthalpyIceFreezing(InterstitialAbsSalinityTmp,
+                                                     Pressure);
+         }
+
+         // This is the function, Fun, whose zero we seek
+         Func = BulkPotEnthalpy -
+                (1.0_Real - IceMassFracTmp) * Cp0Sw * CtFreezing -
+                IceMassFracTmp * PotEnthalpy;
+         IceMassFracOld = IceMassFracTmp;
+         IceMassFracTmp = IceMassFracOld - Func / DFuncDPotEnthalpy;
+
+         // The ice mass fraction out of this code is restricted to be less than
+         // 0.9.
+         IceMassFracTmp = Kokkos::min(IceMassFracTmp, 0.9_Real);
+
+         InterstitialAbsSalinityTmp =
+             BulkAbsSalinity / (1.0_Real - IceMassFracTmp);
+      }
+
+      if (IceMassFracTmp < 0.0_Real) {
+         InterstitialAbsSalinity = BulkAbsSalinity;
+         InterstitialConservTemp = BulkPotEnthalpy / Cp0Sw;
+         IceMassFraction         = 0.0_Real;
+      } else {
+         InterstitialAbsSalinity = InterstitialAbsSalinityTmp;
+         InterstitialConservTemp = calcCtFreezing(InterstitialAbsSalinityTmp,
+                                                  Pressure, SaturationFract);
+         IceMassFraction         = IceMassFracTmp;
+      }
+   }
+
+   /// Calculates the first derivatives of the conservative temperature at which
+   /// seawater freezes, with respect to absolute salinity GSW Toolbox function
+   /// gsw_ct_freezing_first_derivatives_poly
+   KOKKOS_FUNCTION Real
+   calcConsTempFreezingFirstDerivPoly(const Real Salinity, const Real Pressure,
+                                      const Real SaturationFract) const {
+      constexpr Real A   = 0.014289763856964;
+      constexpr Real B   = 0.057000649899720;
+      constexpr Real C0  = 0.017947064327968736;
+      constexpr Real C1  = -6.076099099929818;
+      constexpr Real C2  = 4.883198653547851;
+      constexpr Real C3  = -11.88081601230542;
+      constexpr Real C4  = 13.34658511480257;
+      constexpr Real C5  = -8.722761043208607;
+      constexpr Real C6  = 2.082038908808201;
+      constexpr Real C10 = -0.9891538123307282;
+      constexpr Real C11 = -0.08987150128406496;
+      constexpr Real C12 = 0.3831132432071728;
+      constexpr Real C13 = 1.054318231187074;
+      constexpr Real C14 = 1.065556599652796;
+      constexpr Real C15 = -0.7997496801694032;
+      constexpr Real C16 = 0.3850133554097069;
+      constexpr Real C17 = -2.078616693017569;
+      constexpr Real C18 = 0.8756340772729538;
+      constexpr Real C19 = -2.079022768390933;
+      constexpr Real C20 = 1.596435439942262;
+      constexpr Real C21 = 0.1338002171109174;
+      constexpr Real C22 = 1.242891021876471;
+
+      Real D = -A - A * B - 2.4_Real * B / SS0;
+      Real E = 2.0_Real * A * B / SS0;
+
+      const Real SaR = Salinity * 1.0e-2;
+      const Real X   = Kokkos::sqrt(SaR);
+      const Real Pr  = Pressure * 1.0e-4;
+
+      return (C1 +
+              X * (1.5_Real * C2 +
+                   X * (2.0_Real * C3 +
+                        X * (2.5_Real * C4 +
+                             X * (3.0_Real * C5 + 3.5_Real * C6 * X)))) +
+              Pr *
+                  (C10 +
+                   X * (1.5_Real * C11 +
+                        X * (2.0_Real * C13 +
+                             X * (2.5_Real * C16 +
+                                  X * (3.0_Real * C19 + 3.5_Real * C22 * X)))) +
+                   Pr * (C12 +
+                         X * (1.5_Real * C14 +
+                              X * (2.0_Real * C17 + 2.5_Real * C20 * X)) +
+                         Pr * (C15 +
+                               X * (1.5_Real * C18 + 2.0_Real * C21 * X))))) *
+                 1e-2_Real -
+             SaturationFract * 1e-3_Real * (D - Salinity * E);
+   }
+
+   /// Calculate the first derivatives of the potential enthalpy of ice at which
+   /// ice melts into seawater with respect to absolute salinity GSW Toolbox
+   /// function gsw_pot_enthalpy_ice_freezing_first_derivatives_poly
+   KOKKOS_FUNCTION Real calcPotEnthalpyIceFirstDerivPoly(
+       const Real Salinity, const Real Pressure) const {
+      constexpr Real D1  = -1.249490228128056e4;
+      constexpr Real D2  = 1.336783910789822e4;
+      constexpr Real D3  = -4.811989517774642e4;
+      constexpr Real D4  = 8.044864276240987e4;
+      constexpr Real D5  = -7.124452125071862e4;
+      constexpr Real D6  = 2.280706828014839e4;
+      constexpr Real D7  = 0.315423710959628e3;
+      constexpr Real D8  = -3.592775732074710e2;
+      constexpr Real D9  = 1.644828513129230e3;
+      constexpr Real D10 = -4.809640968940840e3;
+      constexpr Real D11 = 2.901071777977272e3;
+      constexpr Real D12 = -9.218459682855746e2;
+      constexpr Real D13 = 0.379377450285737e3;
+      constexpr Real D14 = -2.672164989849465e3;
+      constexpr Real D15 = 5.044317489422632e3;
+      constexpr Real D16 = -2.631711865886377e3;
+      constexpr Real D17 = -0.160245473297112e3;
+      constexpr Real D18 = 4.029061696035465e2;
+      constexpr Real D19 = -3.682950019675760e2;
+
+      constexpr Real F1  = -2.034535061416256e4;
+      constexpr Real F2  = 0.315423710959628e3;
+      constexpr Real F3  = -0.239518382138314e3;
+      constexpr Real F4  = 0.822414256564615e3;
+      constexpr Real F5  = -1.923856387576336e3;
+      constexpr Real F6  = 0.967023925992424e3;
+      constexpr Real F7  = -0.263384562367307e3;
+      constexpr Real F8  = -5.051613740291480e3;
+      constexpr Real F9  = 7.587549005714740e2;
+      constexpr Real F10 = -3.562886653132620e3;
+      constexpr Real F11 = 5.044317489422632e3;
+      constexpr Real F12 = -2.105369492709102e3;
+      constexpr Real F13 = 6.387082316647800e2;
+      constexpr Real F14 = -4.807364198913360e2;
+      constexpr Real F15 = 8.058123392070929e2;
+      constexpr Real F16 = -5.524425029513641e2;
+
+      const Real SaR = Salinity * 1.0e-2;
+      const Real X   = Kokkos::sqrt(SaR);
+      const Real Pr  = Pressure * 1.0e-4;
+
+      return (D1 + X * (D2 + X * (D3 + X * (D4 + X * (D5 + D6 * X)))) +
+              Pr * (D7 + X * (D8 + X * (D9 + X * (D10 + X * (D11 + D12 * X)))) +
+                    Pr * (D13 + X * (D14 + X * (D15 + D16 * X)) +
+                          Pr * (D17 + X * (D18 + D19 * X))))) *
+             1e-2;
+   }
+
+   /// Calculates the potential enthalpy of ice at which seawater freezes.
+   /// The error of this fit ranges between -2.5 and 1 J/kg with an rms of
+   /// 1.07, between SA of 0 and 120 g/kg and Pressure between 0 and 10,000 dbar
+   /// The error of the fit is between -0.7 and 0.7 with and rums of 0.3
+   /// between SA of 0 and 120 g/kg and Pressure between 0 and 5,000 dbar.
+   /// GSW Toolbox function
+   KOKKOS_FUNCTION Real calcPotEnthalpyIceFreezing(const Real Salinity,
+                                                   const Real Pressure) const {
+      constexpr Real C0  = -3.333548730778702e5;
+      constexpr Real C1  = -1.249490228128056e4;
+      constexpr Real C2  = 0.891189273859881e4;
+      constexpr Real C3  = -2.405994758887321e4;
+      constexpr Real C4  = 3.217945710496395e4;
+      constexpr Real C5  = -2.374817375023954e4;
+      constexpr Real C6  = 0.651630522289954e4;
+      constexpr Real C7  = -2.034535061416256e4;
+      constexpr Real C8  = -0.252580687014574e4;
+      constexpr Real C9  = 0.021290274388826e4;
+      constexpr Real C10 = 0.315423710959628e3;
+      constexpr Real C11 = -0.239518382138314e3;
+      constexpr Real C12 = 0.379377450285737e3;
+      constexpr Real C13 = 0.822414256564615e3;
+      constexpr Real C14 = -1.781443326566310e3;
+      constexpr Real C15 = -0.160245473297112e3;
+      constexpr Real C16 = -1.923856387576336e3;
+      constexpr Real C17 = 2.522158744711316e3;
+      constexpr Real C18 = 0.268604113069031e3;
+      constexpr Real C19 = 0.967023925992424e3;
+      constexpr Real C20 = -1.052684746354551e3;
+      constexpr Real C21 = -0.184147500983788e3;
+      constexpr Real C22 = -0.263384562367307e3;
+
+      const Real SaR = Salinity * 1.0e-2;
+      const Real X   = Kokkos::sqrt(SaR);
+      const Real Pr  = Pressure * 1.0e-4;
+
+      return C0 +
+             SaR * (C1 + X * (C2 + X * (C3 + X * (C4 + X * (C5 + C6 * X))))) +
+             Pr * (C7 + Pr * (C8 + C9 * Pr)) +
+             SaR * Pr *
+                 (C10 + Pr * (C12 + Pr * (C15 + C21 * SaR)) +
+                  SaR * (C13 + C17 * Pr + C19 * SaR) +
+                  X * (C11 + Pr * (C14 + C18 * Pr) +
+                       SaR * (C16 + C20 * Pr + C22 * SaR)));
+   }
+
+   /// Calculates the final absolute salinity, final conservative temperature,
+   /// and final ice mass fraction that results when a given mass fraction of
+   /// ice melts and is mized into seawater whose properties are (SA, CT, P).
+   /// When the mass fraction is calculated as being a positive value, the
+   /// seawater-ice mixture is at thermodynamic equilibrium. It also returns 0
+   /// for the mass fraction if the input bulk enthalpy is sufficiently large,
+   /// meaning there is no ice present in the final state. GSW Toolbox function
+   /// gsw_melting_ice_into_seawater
+   KOKKOS_FUNCTION void calcMeltingIceIntoSeawater(
+       const Real AbsSalinity, const Real ConservTemp, const Real Pressure,
+       const Real IceMassFractionInput, const Real IceTemperature,
+       Real &AbsSalinityFinal, Real &ConservTempFinal,
+       Real &IceMassFractionFinal) const {
+
+      Real SaturationFract = 0.0_Real;
+      // Note: GSW Toolbox uses gsw_ct_freezing_exact() here, which uses a
+      // Newton-Raphson iteration to find the freezing temperature. This is not
+      // necessary for our purposes, so we use the polynomial fit instead,
+      // gsw_ct_freezing_poly() [our calcCtFreezing function above]. The error
+      // of this fit ranges between -5e-4 K and 6e-4 K compared to the exact
+      // freezing temperature.
+      // Real CtFreezingWater = calcCtFreezing(AbsSalinity, Pressure,
+      // SaturationFract); if (ConservTemp < CtFreezingWater) {
+      // The sea water Conservative temperature is below the freezing point
+      // Error handling: sea water Conservative temperature is below the
+      // freezing point
+      //   Error;
+      //}
+
+      // Note: GSW Toolbox uses gsw_t_freezing_exact() here, which uses a
+      // Newton-Raphson iteration to find the freezing temperature. This is not
+      // necessary for our purposes, so we use the polynomial fit instead,
+      // gsw_t_freezing_poly() [our calcISTempFreezing function above].
+      // Real TFreezingIce = calcISTempFreezing(0.0_Real, Pressure,
+      // SaturationFract) - 1e-6_Real; if (IceTemperature > TFreezingIce) {
+      // Error handling: ice temperature is above the freezing point
+      //   Error;
+      //}
+
+      Real BulkAbsSalinity = (1.0_Real - IceMassFractionInput) * AbsSalinity;
+
+      // Note: GSW Toolbox uses gsw_enthalpy_ct_exact() here, which uses a
+      // Newton-Raphson iteration to find the enthalpy. This is not necessary
+      // for our purposes, so we use the polynomial fit instead, gsw_enthalpy()
+      // [our calcSpecEnthalpySW function below].
+      Real BulkPotEnthalpy =
+          (1.0_Real - IceMassFractionInput) *
+              calcSpecEnthalpySW(AbsSalinity, ConservTemp, Pressure) +
+          IceMassFractionInput * calcSpecEnthalpyIce(IceTemperature, Pressure);
+
+      calcFrazilProperties(BulkAbsSalinity, BulkPotEnthalpy, Pressure,
+                           AbsSalinityFinal, ConservTempFinal,
+                           IceMassFractionFinal);
+   }
+
+   /// Calculate the specific enthalpy of ice
+   /// GSW Toolbox function gsw_enthalpy_ice
+   KOKKOS_FUNCTION Real calcSpecEnthalpyIce(const Real ISTemperature,
+                                            const Real Pressure) const {
+      constexpr Real G00 = -6.32020233335886e5;
+      constexpr Real G01 = 6.55022213658955e-1;
+      constexpr Real G02 = -1.89369929326131e-8;
+      constexpr Real G03 = 3.3974612327105304e-15;
+      constexpr Real G04 = -5.564648690589909e-22;
+      const Kokkos::complex<Real> T1(3.68017112855051e-2_Real,
+                                     5.10878114959572e-2_Real);
+      const Kokkos::complex<Real> T2(3.37315741065416e-1_Real,
+                                     3.35449415919309e-1_Real);
+      const Kokkos::complex<Real> R1(4.47050716285388e1_Real,
+                                     6.56876847463481e1_Real);
+      const Kokkos::complex<Real> R20(-7.25974574329220e1_Real,
+                                      -7.81008427112870e1_Real);
+      const Kokkos::complex<Real> R21(-5.57107698030123e-5_Real,
+                                      4.64578634580806e-5_Real);
+      const Kokkos::complex<Real> R22(2.34801409215913e-11_Real,
+                                      -2.85651142904972e-11_Real);
+
+      Real Tau = (ISTemperature + TkFrz) / TkTrip;
+      Real DZI = Db2Pa * Pressure / 611.657; // PTrip;
+      Real G0  = G00 + DZI * (G01 + DZI * (G02 + DZI * (G03 + G04 * DZI)));
+      Kokkos::complex<Real> R2      = R20 + DZI * (R21 + R22 * DZI);
+      Kokkos::complex<Real> SqTauT1 = Kokkos::pow(Tau / T1, 2.0_Real);
+      Kokkos::complex<Real> SqTauT2 = Kokkos::pow(Tau / T2, 2.0_Real);
+      Kokkos::complex<Real> G =
+          R1 * T1 * (Kokkos::log(1.0_Real - SqTauT1) + SqTauT2) +
+          R2 * T2 * (Kokkos::log(1.0_Real - SqTauT2) + SqTauT1);
+
+      return G0 + TkTrip * G.real(); // Kokkos::abs(G);
+   }
+
+   /// Calculate the specific enthalpy of seawater from absolute salinity and
+   /// conservative temperature and pressure GSW Toolbox function  gsw_enthalpy
+   /// and gsw_dynamic_enthalpy
+   KOKKOS_FUNCTION Real calcSpecEnthalpySW(const Real AbsSalinity,
+                                           const Real ConservTemp,
+                                           const Real Pressure) const {
+      constexpr Real H001 = 1.07699958620e-3;
+      constexpr Real H002 = -3.03995719050e-5;
+      constexpr Real H003 = 3.32853897400e-6;
+      constexpr Real H004 = -2.82734035930e-7;
+      constexpr Real H005 = 2.10623061600e-8;
+      constexpr Real H006 = -2.10787688100e-9;
+      constexpr Real H007 = 2.80192913290e-10;
+      constexpr Real H011 = -1.56497346750e-5;
+      constexpr Real H012 = 9.25288271450e-6;
+      constexpr Real H013 = -3.91212891030e-7;
+      constexpr Real H014 = -9.13175163830e-8;
+      constexpr Real H015 = 6.29081998040e-8;
+      constexpr Real H021 = 2.77621064840e-5;
+      constexpr Real H022 = -5.85830342650e-6;
+      constexpr Real H023 = 7.10167624670e-7;
+      constexpr Real H024 = 7.17397628980e-8;
+      constexpr Real H031 = -1.65211592590e-5;
+      constexpr Real H032 = 3.96398280870e-6;
+      constexpr Real H033 = -1.53775133460e-7;
+      constexpr Real H042 = -1.70510937410e-6;
+      constexpr Real H043 = -2.11176388380e-8;
+      constexpr Real H041 = 6.91113227020e-6;
+      constexpr Real H051 = -8.05396155400e-7;
+      constexpr Real H052 = 2.53683834070e-7;
+      constexpr Real H061 = 2.05430942680e-7;
+      constexpr Real H101 = -3.10389819760e-4;
+      constexpr Real H102 = 1.21312343735e-5;
+      constexpr Real H103 = -1.94948109950e-7;
+      constexpr Real H104 = 9.07754712880e-8;
+      constexpr Real H105 = -2.22942508460e-8;
+      constexpr Real H111 = 3.50095997640e-5;
+      constexpr Real H112 = -4.78385440780e-6;
+      constexpr Real H113 = -1.85663848520e-6;
+      constexpr Real H114 = -6.82392405930e-8;
+      constexpr Real H121 = -3.74358423440e-5;
+      constexpr Real H122 = -1.18391541805e-7;
+      constexpr Real H123 = 1.30457956930e-7;
+      constexpr Real H131 = 2.41414794830e-5;
+      constexpr Real H132 = -1.72793868275e-6;
+      constexpr Real H133 = 2.58729626970e-9;
+      constexpr Real H141 = -8.75958731540e-6;
+      constexpr Real H142 = 6.47835889150e-7;
+      constexpr Real H151 = -3.30527589000e-7;
+      constexpr Real H201 = 6.69280670380e-4;
+      constexpr Real H202 = -1.73962304870e-5;
+      constexpr Real H203 = -1.60407505320e-6;
+      constexpr Real H204 = 4.18657594500e-9;
+      constexpr Real H211 = -4.35926785610e-5;
+      constexpr Real H212 = 5.55041738250e-6;
+      constexpr Real H213 = 1.82069162780e-6;
+      constexpr Real H221 = 3.59078227600e-5;
+      constexpr Real H222 = 1.46416731475e-6;
+      constexpr Real H223 = -2.19103680220e-7;
+      constexpr Real H231 = -1.43536330480e-5;
+      constexpr Real H232 = 1.58276530390e-7;
+      constexpr Real H241 = 4.37036805980e-6;
+      constexpr Real H301 = -8.50479339370e-4;
+      constexpr Real H302 = 1.87353886525e-5;
+      constexpr Real H303 = 1.64210356660e-6;
+      constexpr Real H311 = 3.45324618280e-5;
+      constexpr Real H312 = -4.92235589220e-6;
+      constexpr Real H313 = -4.51472854230e-7;
+      constexpr Real H321 = -1.86985841870e-5;
+      constexpr Real H322 = -2.44130696000e-7;
+      constexpr Real H331 = 2.28633245560e-6;
+      constexpr Real H401 = 5.80860699430e-4;
+      constexpr Real H402 = -8.66110930600e-6;
+      constexpr Real H403 = -5.93732490900e-7;
+      constexpr Real H411 = -1.19594097880e-5;
+      constexpr Real H421 = 3.85953392440e-6;
+      constexpr Real H412 = 1.29546126300e-6;
+      constexpr Real H501 = -2.10923705070e-4;
+      constexpr Real H502 = 1.54637136265e-6;
+      constexpr Real H511 = 1.38645945810e-6;
+      constexpr Real H601 = 3.19324573050e-5;
+
+      Real SFac   = 0.0248826675584615_Real;
+      Real Offset = 5.971840214030754e-1_Real;
+      Real Xs     = Kokkos::sqrt(AbsSalinity * SFac + Offset);
+      Real Ys     = ConservTemp * 0.025_Real;
+      Real Z      = Pressure * 1.0e-4_Real;
+
+      return (Z *
+              (H001 +
+               Xs * (H101 +
+                     Xs * (H201 +
+                           Xs * (H301 +
+                                 Xs * (H401 + Xs * (H501 + H601 * Xs))))) +
+               Ys *
+                   (H011 +
+                    Xs * (H111 +
+                          Xs * (H211 + Xs * (H311 + Xs * (H411 + H511 * Xs)))) +
+                    Ys * (H021 +
+                          Xs * (H121 + Xs * (H221 + Xs * (H321 + H421 * Xs))) +
+                          Ys * (H031 + Xs * (H131 + Xs * (H231 + H331 * Xs)) +
+                                Ys * (H041 + Xs * (H141 + H241 * Xs) +
+                                      Ys * (H051 + H151 * Xs + H061 * Ys))))) +
+               Z * (H002 +
+                    Xs * (H102 +
+                          Xs * (H202 + Xs * (H302 + Xs * (H402 + H502 * Xs)))) +
+                    Ys * (H012 +
+                          Xs * (H112 + Xs * (H212 + Xs * (H312 + H412 * Xs))) +
+                          Ys * (H022 + Xs * (H122 + Xs * (H222 + H322 * Xs)) +
+                                Ys * (H032 + Xs * (H132 + H232 * Xs) +
+                                      Ys * (H042 + H142 * Xs + H052 * Ys)))) +
+                    Z * (H003 +
+                         Xs * (H103 + Xs * (H203 + Xs * (H303 + H403 * Xs))) +
+                         Ys * (H013 + Xs * (H113 + Xs * (H213 + H313 * Xs)) +
+                               Ys * (H023 + Xs * (H123 + H223 * Xs) +
+                                     Ys * (H033 + H133 * Xs + H043 * Ys))) +
+                         Z * (H004 + Xs * (H104 + H204 * Xs) +
+                              Ys * (H014 + H114 * Xs + H024 * Ys) +
+                              Z * (H005 + H105 * Xs + H015 * Ys +
+                                   Z * (H006 + H007 * Z))))))) *
+                 Db2Pa * 1.0e-4_Real +
+             Cp0Sw * ConservTemp;
+   }
+
+   /// Calculate in-situ temperature from the potential temperature of ice with
+   /// reference pressure of 0 dbar and the in-situ pressure GSW Toolbox
+   /// function gsw_t_from_pt0_ice
+   KOKKOS_FUNCTION Real
+   calcISTempFromPotTempIce(const Real ISTemperature) const {
+      constexpr Real P1 = -2.259745637898635e-4;
+      constexpr Real P2 = 1.486236778150360e-9;
+      constexpr Real P3 = 6.257869607978536e-12;
+      constexpr Real P4 = -5.253795281359302e-7;
+      constexpr Real P5 = 6.752596995671330e-9;
+      constexpr Real P6 = 2.082992190070936e-11;
+
+      constexpr Real Q1 = -5.849191185294459e-15;
+      constexpr Real Q2 = 9.330347971181604e-11;
+      constexpr Real Q3 = 3.415888886921213e-13;
+      constexpr Real Q4 = 1.064901553161811e-12;
+      constexpr Real Q5 = -1.454060359158787e-10;
+      constexpr Real Q6 = -5.323461372791532e-13;
+
+      ///// need to add calculation
+      Real Pressure = 0.0_Real;
+      Real Dp       = Pressure - PRef;
+      Real PotTempIce =
+          ISTemperature +
+          Dp * (P1 + (Pressure + PRef) * (P2 + P3 * ISTemperature) +
+                ISTemperature * (P5 + P6 * ISTemperature));
+
+      PotTempIce = Kokkos::min(PotTempIce, -T0);
+      PotTempIce = Kokkos::max(PotTempIce, -TkFrz + 0.15_Real);
+
+      DEntropyDt = calcGibbsIce(2, 9, PotTempIce, PRef);
+
+      EntropyTrue = calcGibbsIcePartT(ISTemperature, Pressure);
+
+      ///.....
+
+      return;
    }
 
  private:
    Array1DI4 MinLayerCell;
    Array1DI4 MaxLayerCell;
+   Array1DReal LatCell;
+   Array1DReal LonCell;
 };
 
 /// Linear Equation of State
@@ -751,10 +1555,42 @@ class Eos {
                                   const Array2DReal &SpecVol);
 
    /// Convert Conservative Temperature to potential temperature
+   /// GSW Toolbox function gsw_
    Real calcPtFromCt(const Real &Sa, const Real &Ct) const;
 
    /// Convert potential temperature to Conservative Temperature
+   /// GSW Toolbox function gsw_
    Real calcCtFromPt(const Real &Sa, const Real &Pt) const;
+
+   /// Calculate potential enthalpy of ice from potential temperature of ice
+   /// GSW Toolbox function gsw_pot_enthalpy_from_pt_ice_poly
+   Real calcPotEnthalpyIceFromPotTempIce(const Real &PotTempIce) const;
+
+   /// Calculate frazil properties
+   /// GSW Toolbox function gsw_frazil_properties_potential_poly
+   void calcFrazilProperties(const Real &BulkAbsSalinity,
+                             const Real &BulkPotEnthalpy, const Real &Pressure,
+                             Real &InterstitialAbsSalinity,
+                             Real &InterstitialConservTemp,
+                             Real &IceMassFraction) const;
+
+   /// Calculate melting ice properties
+   /// GSW Toolbox function gsw_melting_ice_into_seawater
+   void calcMeltingIceIntoSeawater(
+       const Real &AbsSalinity, const Real &ConservTemp, const Real &Pressure,
+       const Real &IceMassFractionInput, const Real &IceTemperature,
+       Real &AbsSalinityFinal, Real &ConservTempFinal,
+       Real &IceMassFractionFinal) const;
+
+   /// Calculates the potential temperature of ice from potential enthalpy of
+   /// ice GSW Toolbox function gsw_pt_from_pot_enthalpy_ice_poly
+   Real calcPotTempIceFromPotEnthalpyIce(const Real &PotEnthalpyIce) const;
+
+   /// Calculates in-situ temperature from the potential tmeperature of ice with
+   /// reference pressure of 0 dbar and the in-situ pressure
+   /// GSW Toolbox function gsw_t_from_pt0_ice
+   Real calcISTempFromPotTempIce(const Real &PotTempIce,
+                                 const Real &Pressure) const;
 
    /// Initialize EOS from config and mesh
    static void init();
