@@ -71,6 +71,7 @@ Omega:
     VelocityVertAdvTendencyEnable: true
     TracerVertAdvTendencyEnable: true
     PressureGradTendencyEnable: true
+    FrazilTendencyEnable: false
     VelVertMixTendencyEnable: true
     TracerVertMixTendencyEnable: true
   ManufacturedSolution:
@@ -86,6 +87,11 @@ Omega:
       DRhoDT: -0.2
       DRhoDS: 0.8
       RhoT0S0: 1000.0
+  Frazil:
+    FrazilType: basic
+    MassLimit: 0.1
+    DepthLimit: -1.0
+    ConservationCheck: false
   VertMix:
     Background:
       Diffusivity: 1.0e-5
